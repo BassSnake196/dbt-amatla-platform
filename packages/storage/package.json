@@ -1,0 +1,21 @@
+{
+  "name": "@amatla/storage",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Abstracción de almacenamiento de archivos — mock local de R2 con URLs prefirmadas (HMAC); la implementación R2 real llega con las credenciales de Cloudflare",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "echo \"lint pendiente (se configura con ESLint en tarea de CI)\""
+  },
+  "devDependencies": {
+    "@amatla/config": "*",
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2",
+    "vitest": "^3.2.4"
+  }
+}

@@ -15,6 +15,8 @@ const leccionResumen = z.object({
   orden: z.number().int(),
   duracion: z.number().int().nullable(),
   esPreview: z.boolean(),
+  /** true cuando ya hay un archivo escaneado y enlazado (fileKey). */
+  tieneArchivo: z.boolean(),
 })
 
 const seccionResumen = z.object({
@@ -73,6 +75,7 @@ export const seccionesRouter = router({
           orden: l.order,
           duracion: l.duration,
           esPreview: l.isPreview,
+          tieneArchivo: l.fileKey !== null,
         })),
       }))
     }),

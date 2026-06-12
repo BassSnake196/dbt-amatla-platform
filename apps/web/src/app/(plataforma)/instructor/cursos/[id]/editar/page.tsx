@@ -1,8 +1,10 @@
 import { notFound } from 'next/navigation'
+import { ImageIcon } from 'lucide-react'
 import { exigirInstructor } from '@/lib/guardia'
 import { apiServer } from '@/lib/api-server'
 import { actualizarCursoAction } from '@/acciones/cursos'
 import { CursoForm } from '@/components/instructor/curso-form'
+import { SubirArchivo } from '@/components/instructor/subir-archivo'
 
 export const metadata = { title: 'Editar curso — DBT.Amatla' }
 
@@ -24,6 +26,37 @@ export default async function EditarCursoPage({ params }: { params: Promise<{ id
         </h2>
         <p className="mt-1 text-sm text-neutral-900/60">{curso.titulo}</p>
       </div>
+      <section className="max-w-2xl space-y-3 rounded-card bg-white p-5 shadow-card">
+        <h3 className="text-sm font-semibold text-brand-dark">Imagen de portada</h3>
+        <div className="flex flex-wrap items-start gap-5">
+          {curso.thumbnailUrl ? (
+            // La URL viene firmada on-demand (expira en 30 min) — no se cachea
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={curso.thumbnailUrl}
+              alt={`Portada de ${curso.titulo}`}
+              className="aspect-video w-56 rounded-lg border border-neutral-100 object-cover"
+            />
+          ) : (
+            <div className="flex aspect-video w-56 items-center justify-center rounded-lg border border-dashed border-neutral-100 bg-brand-surface/40 text-brand-dark/30">
+              <ImageIcon size={28} aria-hidden="true" />
+            </div>
+          )}
+          <div className="space-y-2">
+            <SubirArchivo
+              proposito="THUMBNAIL_CURSO"
+              objetivoId={curso.id}
+              accept=".jpg,.jpeg,.png"
+              etiqueta={curso.thumbnailUrl ? 'Reemplazar imagen' : 'Subir imagen'}
+            />
+            <p className="max-w-xs text-xs text-neutral-900/50">
+              JPG o PNG, máximo 10MB. Todo archivo pasa por un escaneo de seguridad antes de
+              publicarse.
+            </p>
+          </div>
+        </div>
+      </section>
+
       <CursoForm
         action={accionConId}
         textoBoton="Guardar cambios"

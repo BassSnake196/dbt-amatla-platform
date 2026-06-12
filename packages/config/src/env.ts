@@ -40,6 +40,15 @@ const serverSchema = z
     R2_BUCKET: z.string().default('amatla-files'),
     ANTHROPIC_API_KEY: z.string().optional(),
 
+    // ===== Almacenamiento mock local (SOLO desarrollo — R2 lo reemplaza en prod) =====
+    STORAGE_LOCAL_DIR: z.string().optional(),
+    STORAGE_PUBLIC_URL: z.string().url().default('http://localhost:3000/api/almacen-dev'),
+    STORAGE_SIGNING_SECRET: z.string().default('amatla-dev-almacen-secreto'),
+
+    // ===== ClamAV (clamd por TCP — contenedor de docker-compose) =====
+    CLAMAV_HOST: z.string().default('localhost'),
+    CLAMAV_PORT: z.coerce.number().int().positive().default(3310),
+
     // ===== Monitoreo =====
     SENTRY_DSN: z.string().url().optional(),
     AXIOM_TOKEN: z.string().optional(),

@@ -7,6 +7,10 @@ dist/
 .turbo/
 out/
 build/
+*.tsbuildinfo
+
+# Estado local de Claude Code
+.claude/scheduled_tasks.lock
 
 # Entorno — NUNCA commitear secretos
 .env
@@ -16,6 +20,9 @@ build/
 # Bases de datos locales
 *.db
 *.sqlite
+
+# Almacén local de archivos (mock de R2 — solo desarrollo)
+.almacen-dev/
 
 # Logs y temporales
 *.log

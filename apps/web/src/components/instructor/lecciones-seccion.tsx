@@ -18,7 +18,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { AlignLeft, Check, Eye, FileText, GripVertical, Pencil, Plus, Trash2, Video, X } from 'lucide-react'
+import { AlignLeft, Check, Eye, FileCheck2, FileText, GripVertical, Pencil, Plus, Trash2, Video, X } from 'lucide-react'
 import {
   crearLeccionAction,
   eliminarLeccionAction,
@@ -26,6 +26,7 @@ import {
   reordenarLeccionesAction,
   type TipoLeccion,
 } from '@/acciones/lecciones'
+import { SubirArchivo } from './subir-archivo'
 
 export interface LeccionItem {
   id: string
@@ -33,6 +34,8 @@ export interface LeccionItem {
   tipo: 'VIDEO' | 'PDF' | 'QUIZ' | 'TEXT'
   duracion: number | null
   esPreview: boolean
+  /** true cuando ya hay un archivo escaneado y enlazado (lecciones PDF). */
+  tieneArchivo: boolean
 }
 
 const ICONO_TIPO = {
@@ -88,7 +91,14 @@ export function LeccionesSeccion({ cursoId, seccionId, lecciones: iniciales, onE
         setNuevoTitulo('')
         setLecciones((prev) => [
           ...prev,
-          { id: r.id ?? `tmp-${Date.now()}`, titulo, tipo: nuevoTipo, duracion: null, esPreview: false },
+          {
+            id: r.id ?? `tmp-${Date.now()}`,
+            titulo,
+            tipo: nuevoTipo,
+            duracion: null,
+            esPreview: false,
+            tieneArchivo: false,
+          },
         ])
       }
     })
@@ -249,6 +259,24 @@ function LeccionFila({
 
       {!editando && (
         <span className="flex shrink-0 items-center">
+          {leccion.tipo === 'PDF' && (
+            <>
+              {leccion.tieneArchivo && (
+                <FileCheck2
+                  size={13}
+                  className="mr-0.5 text-brand-secondary"
+                  aria-label="PDF cargado"
+                />
+              )}
+              <SubirArchivo
+                compacto
+                proposito="PDF_LECCION"
+                objetivoId={leccion.id}
+                accept=".pdf"
+                etiqueta={leccion.tieneArchivo ? `Reemplazar PDF de ${leccion.titulo}` : `Subir PDF a ${leccion.titulo}`}
+              />
+            </>
+          )}
           <button
             type="button"
             onClick={() => setEditando(true)}

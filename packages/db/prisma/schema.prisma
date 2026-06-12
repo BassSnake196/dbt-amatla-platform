@@ -359,6 +359,11 @@ model FileUpload {
   fileName   String
   mimeType   String
   sizeBytes  Int
+  // Para qué se sube y a qué recurso se enlaza cuando el escaneo da CLEAN.
+  // El worker de media hace el enlace (Course.thumbnail / Lesson.fileKey) —
+  // nunca se enlaza un archivo sin escanear.
+  purpose    String? // 'THUMBNAIL_CURSO' | 'PDF_LECCION'
+  targetId   String? // Course.id o Lesson.id según purpose
   scanStatus String   @default("PENDING") // PENDING | CLEAN | INFECTED | ERROR
   scanResult String?
   createdAt  DateTime @default(now())

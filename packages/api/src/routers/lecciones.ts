@@ -22,7 +22,7 @@ const datosLeccion = z.object({
 })
 
 /** Carga la lección verificando la cadena de ownership completa. */
-async function leccionPropia(ctx: Context & { user: SessionUser }, leccionId: string) {
+export async function leccionPropia(ctx: Context & { user: SessionUser }, leccionId: string) {
   const leccion = await ctx.prisma.lesson.findUnique({
     where: { id: leccionId },
     include: { section: { include: { course: { select: { id: true, instructorId: true } } } } },

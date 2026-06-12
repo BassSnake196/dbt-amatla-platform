@@ -5,6 +5,7 @@ import { TRPCError } from '@trpc/server'
 import { Prisma } from '@amatla/db'
 import { router, instructorProcedure } from '../trpc.js'
 import { auditFromRequest, auditResource } from '../audit.js'
+import { obtenerAlmacen } from '../almacen.js'
 import type { Context, SessionUser } from '../context.js'
 
 const cursoResumen = z.object({
@@ -25,6 +26,8 @@ const cursoEditable = z.object({
   descripcion: z.string(),
   categoria: z.string(),
   status: z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']),
+  // URL firmada on-demand (regla #10: nunca se guarda la URL, solo la key)
+  thumbnailUrl: z.string().nullable(),
 })
 
 // Validaciones de entrada — mensajes en español para mostrarse en el formulario
@@ -100,6 +103,7 @@ export const cursosRouter = router({
         descripcion: curso.description,
         categoria: curso.category,
         status: curso.status,
+        thumbnailUrl: curso.thumbnail ? obtenerAlmacen().urlLectura(curso.thumbnail).url : null,
       }
     }),
 
