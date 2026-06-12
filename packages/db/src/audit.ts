@@ -27,6 +27,11 @@ export const AUDIT_ACTIONS = [
   'UPDATE_SECTION',
   'DELETE_SECTION',
   'REORDER_SECTIONS',
+  // Lecciones
+  'CREATE_LESSON',
+  'UPDATE_LESSON',
+  'DELETE_LESSON',
+  'REORDER_LESSONS',
   // Acceso y asignación
   'ASSIGN_COURSE',
   'REVOKE_ENROLLMENT',

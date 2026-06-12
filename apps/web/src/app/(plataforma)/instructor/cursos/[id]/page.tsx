@@ -52,11 +52,17 @@ export default async function EstructuraCursoPage({
 
       <EstructuraSecciones
         cursoId={curso.id}
-        secciones={secciones.map(({ id: sid, titulo, descripcion, lecciones }) => ({
-          id: sid,
-          titulo,
-          descripcion,
-          lecciones,
+        secciones={secciones.map((s) => ({
+          id: s.id,
+          titulo: s.titulo,
+          descripcion: s.descripcion,
+          lecciones: s.lecciones.map((l) => ({
+            id: l.id,
+            titulo: l.titulo,
+            tipo: l.tipo,
+            duracion: l.duracion,
+            esPreview: l.esPreview,
+          })),
         }))}
       />
     </div>

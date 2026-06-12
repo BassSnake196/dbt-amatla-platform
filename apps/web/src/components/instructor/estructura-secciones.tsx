@@ -18,19 +18,20 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Check, GripVertical, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { Check, ChevronDown, ChevronRight, GripVertical, Pencil, Plus, Trash2, X } from 'lucide-react'
 import {
   crearSeccionAction,
   eliminarSeccionAction,
   renombrarSeccionAction,
   reordenarSeccionesAction,
 } from '@/acciones/secciones'
+import { LeccionesSeccion, type LeccionItem } from './lecciones-seccion'
 
 export interface SeccionItem {
   id: string
   titulo: string
   descripcion: string | null
-  lecciones: number
+  lecciones: LeccionItem[]
 }
 
 interface EstructuraProps {
@@ -79,7 +80,7 @@ export function EstructuraSecciones({ cursoId, secciones: iniciales }: Estructur
         // id temporal hasta que el servidor revalide la página
         setSecciones((previas) => [
           ...previas,
-          { id: `tmp-${Date.now()}`, titulo, descripcion: null, lecciones: 0 },
+          { id: `tmp-${Date.now()}`, titulo, descripcion: null, lecciones: [] },
         ])
       }
     })
@@ -96,7 +97,7 @@ export function EstructuraSecciones({ cursoId, secciones: iniciales }: Estructur
   function eliminar(seccionId: string) {
     const seccion = secciones.find((s) => s.id === seccionId)
     const confirmado = window.confirm(
-      `¿Eliminar la sección "${seccion?.titulo}"? Sus ${seccion?.lecciones ?? 0} lecciones también se eliminarán.`,
+      `¿Eliminar la sección "${seccion?.titulo}"? Sus ${seccion?.lecciones.length ?? 0} lecciones también se eliminarán.`,
     )
     if (!confirmado) return
     setSecciones((prev) => prev.filter((s) => s.id !== seccionId))
@@ -125,10 +126,12 @@ export function EstructuraSecciones({ cursoId, secciones: iniciales }: Estructur
               {secciones.map((seccion, indice) => (
                 <SeccionFila
                   key={seccion.id}
+                  cursoId={cursoId}
                   seccion={seccion}
                   numero={indice + 1}
                   onRenombrar={renombrar}
                   onEliminar={eliminar}
+                  onError={setError}
                 />
               ))}
             </ol>
@@ -158,20 +161,25 @@ export function EstructuraSecciones({ cursoId, secciones: iniciales }: Estructur
 }
 
 function SeccionFila({
+  cursoId,
   seccion,
   numero,
   onRenombrar,
   onEliminar,
+  onError,
 }: {
+  cursoId: string
   seccion: SeccionItem
   numero: number
   onRenombrar: (id: string, titulo: string) => void
   onEliminar: (id: string) => void
+  onError: (mensaje: string | null) => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: seccion.id,
   })
   const [editando, setEditando] = useState(false)
+  const [expandida, setExpandida] = useState(false)
   const [titulo, setTitulo] = useState(seccion.titulo)
 
   function guardar() {
@@ -184,10 +192,11 @@ function SeccionFila({
     <li
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={`flex items-center gap-3 rounded-card bg-white p-4 shadow-card ${
+      className={`rounded-card bg-white p-4 shadow-card ${
         isDragging ? 'z-10 opacity-80 shadow-lg' : ''
       }`}
     >
+      <div className="flex items-center gap-3">
       <button
         type="button"
         {...attributes}
@@ -196,6 +205,16 @@ function SeccionFila({
         aria-label={`Reordenar sección ${seccion.titulo}`}
       >
         <GripVertical size={18} />
+      </button>
+
+      <button
+        type="button"
+        onClick={() => setExpandida((v) => !v)}
+        className="rounded p-0.5 text-neutral-900/50 hover:text-brand-dark"
+        aria-expanded={expandida}
+        aria-label={expandida ? `Contraer ${seccion.titulo}` : `Expandir ${seccion.titulo}`}
+      >
+        {expandida ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
       </button>
 
       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-surface font-serif text-sm font-semibold text-brand-dark">
@@ -233,12 +252,16 @@ function SeccionFila({
           </button>
         </span>
       ) : (
-        <span className="min-w-0 flex-1">
+        <button
+          type="button"
+          onClick={() => setExpandida((v) => !v)}
+          className="min-w-0 flex-1 text-left"
+        >
           <span className="block truncate text-sm font-semibold text-brand-dark">{seccion.titulo}</span>
           <span className="text-xs text-neutral-900/50">
-            {seccion.lecciones} {seccion.lecciones === 1 ? 'lección' : 'lecciones'}
+            {seccion.lecciones.length} {seccion.lecciones.length === 1 ? 'lección' : 'lecciones'}
           </span>
-        </span>
+        </button>
       )}
 
       {!editando && (
@@ -260,6 +283,18 @@ function SeccionFila({
             <Trash2 size={15} />
           </button>
         </span>
+      )}
+      </div>
+
+      {expandida && (
+        <div className="mt-3">
+          <LeccionesSeccion
+            cursoId={cursoId}
+            seccionId={seccion.id}
+            lecciones={seccion.lecciones}
+            onError={onError}
+          />
+        </div>
       )}
     </li>
   )

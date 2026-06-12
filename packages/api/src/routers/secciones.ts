@@ -8,12 +8,21 @@ import { auditFromRequest, auditResource } from '../audit.js'
 import { cursoPropio } from './cursos.js'
 import type { Context, SessionUser } from '../context.js'
 
+const leccionResumen = z.object({
+  id: z.string(),
+  titulo: z.string(),
+  tipo: z.enum(['VIDEO', 'PDF', 'QUIZ', 'TEXT']),
+  orden: z.number().int(),
+  duracion: z.number().int().nullable(),
+  esPreview: z.boolean(),
+})
+
 const seccionResumen = z.object({
   id: z.string(),
   titulo: z.string(),
   descripcion: z.string().nullable(),
   orden: z.number().int(),
-  lecciones: z.number().int(),
+  lecciones: z.array(leccionResumen),
 })
 
 const datosSeccion = z.object({
@@ -26,7 +35,7 @@ const datosSeccion = z.object({
 })
 
 /** Carga la sección verificando que el curso padre sea del instructor. */
-async function seccionPropia(ctx: Context & { user: SessionUser }, seccionId: string) {
+export async function seccionPropia(ctx: Context & { user: SessionUser }, seccionId: string) {
   const seccion = await ctx.prisma.section.findUnique({
     where: { id: seccionId },
     include: { course: { select: { id: true, instructorId: true } } },
@@ -50,14 +59,21 @@ export const seccionesRouter = router({
       const secciones = await ctx.prisma.section.findMany({
         where: { courseId: input.cursoId },
         orderBy: { order: 'asc' },
-        include: { _count: { select: { lessons: true } } },
+        include: { lessons: { orderBy: { order: 'asc' } } },
       })
       return secciones.map((s) => ({
         id: s.id,
         titulo: s.title,
         descripcion: s.description,
         orden: s.order,
-        lecciones: s._count.lessons,
+        lecciones: s.lessons.map((l) => ({
+          id: l.id,
+          titulo: l.title,
+          tipo: l.type,
+          orden: l.order,
+          duracion: l.duration,
+          esPreview: l.isPreview,
+        })),
       }))
     }),
 

@@ -1,5 +1,5 @@
 # 📌 Estado del Proyecto: Plataforma E-Learning
-- **Última actualización:** 2026-06-11 (sesión 2) — CRUD de curso + dev-login (commit b06ebb7).
+- **Última actualización:** 2026-06-11 (sesión 2) — Secciones con drag & drop (commit 883fda2).
 - **Fase Actual:** Fase 2 - Gestión de Cursos (Instructor)
 - **Objetivo del Sprint:** CRUD completo de cursos con uploads (Cloudflare mockeado hasta tener credenciales)
 
@@ -26,7 +26,7 @@
 ## 🎯 Fase 2 — Gestión de Cursos (Instructor)
 - [x] Dashboard de instructor: mis cursos con status y métricas
 - [x] CRUD de curso: crear/editar título, descripción, categoría
-- [ ] CRUD de secciones con reordenamiento (dnd-kit)
+- [x] CRUD de secciones con reordenamiento (dnd-kit)
 - [ ] CRUD de lecciones: VIDEO/PDF/TEXT con reordenamiento
 - [ ] Upload de thumbnail/PDFs (presigned R2 mockeado + pipeline ClamAV)
 - [ ] Upload de video (Cloudflare Stream mockeado + webhook)
@@ -54,6 +54,7 @@
 - **2026-06-11 — Pendiente npm audit:** 2 vulnerabilidades moderadas reportadas tras instalar Next — revisar `npm audit` en la tarea de CI/security-scan.
 - **2026-06-11 — Crypto implementado:** AES-256-GCM en `@amatla/crypto` con formato `iv:authTag:ciphertext` (hex). Mejora sobre el prompt: derivación de clave **perezosa con caché** (scrypt corre una sola vez, el módulo puede importarse antes de cargar el env, y `__resetKeyCache()` permite tests/rotación de secretos). `decryptField` devuelve `null` ante datos corruptos; `decrypt` lanza ante authTag inválido. 13 tests Vitest: roundtrip, acentos/unicode/emoji, textos largos, string vacío, IV aleatorio, detección de manipulación, formatos inválidos, env faltante.
 - **2026-06-11 — Vitest 3:** se instaló vitest **3.2.6** (no 2.x — la 2.1.x traía una vulnerabilidad CRÍTICA de RCE vía su API en watch mode, CVE-2025-24964). Tests excluidos del build (`exclude: src/**/*.test.ts` en tsconfig) para que no lleguen a `dist/`.
+- **2026-06-11 — Secciones + dnd:** router `secciones` (listar/crear/actualizar/eliminar/reordenar) — ownership siempre via curso padre (`seccionPropia` incluye `course.instructorId`); `reordenar` exige que los ids recibidos sean EXACTAMENTE el conjunto actual (BAD_REQUEST si no); nuevas acciones de auditoría `*_SECTION`/`REORDER_SECTIONS`. UI en `/instructor/cursos/[id]`: dnd-kit con actualización optimista + rollback si el server falla, renombrado inline (Enter/Escape), eliminación con confirm (advierte lecciones en cascada). 8 tests de integración. Total tests del repo: 75.
 - **2026-06-11 — CRUD curso:** `cursos.crear/actualizar/obtener` con helper `cursoPropio()` (instructor solo lo suyo; SUPER_ADMIN todo; NOT_FOUND sin revelar existencia). Curso+auditoría en una transacción. Formulario compartido (`CursoForm` con useActionState, errores Zod parseados a texto legible). 6 tests de integración del router. Guard `exigirInstructor()` en `lib/guardia.ts`.
 - **2026-06-11 — Dev login:** `/api/dev-login?como=instructora|estudiante|admin` (bloqueado en producción) crea/renueva la sesión en BD y pone la cookie httpOnly — permite entrar desde el navegador sin Resend/Google.
 - **2026-06-11 — GOTCHA dist de api:** la web consume `@amatla/api` COMPILADO (dist). Tras cambiar el router hay que `turbo run build --filter=@amatla/api` o el dev server de Next sigue con la versión vieja (síntoma: "procedure not found" → mi catch lo volvía 404). Mejora pendiente: entry separado o transpilePackages para DX. Además el entry raíz ya NO re-exporta `buildServer` (la web no debe arrastrar Fastify).
