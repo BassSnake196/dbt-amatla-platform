@@ -66,6 +66,7 @@ model User {
   calendarEvents      CalendarEvent[]
   auditLogs           AuditLog[]
   fileUploads         FileUpload[]
+  videoUploads        VideoUpload[]
 }
 
 // ===== Auth.js (NextAuth v5) — sesiones en BD para poder invalidarlas
@@ -371,4 +372,27 @@ model FileUpload {
   uploader User @relation(fields: [uploadedBy], references: [id])
 
   @@index([scanStatus])
+}
+
+model VideoUpload {
+  // Subida de video a Cloudflare Stream (mock local en desarrollo).
+  // El enlace Lesson.videoId + duration lo hace SOLO el worker de media
+  // cuando el webhook reporta el video listo — nunca el cliente.
+  id         String   @id @default(cuid())
+  uid        String   @unique // ID del video en Stream (NO la URL)
+  // Sin FK: el registro sobrevive si la lección se elimina (auditoría/limpieza)
+  lessonId   String
+  uploadedBy String
+  fileName   String
+  sizeBytes  Int
+  status     String   @default("PENDING") // PENDING | READY | ERROR
+  detail     String?
+  duration   Int? // segundos — lo reporta el webhook video.ready
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  uploader User @relation(fields: [uploadedBy], references: [id])
+
+  @@index([lessonId])
+  @@index([status])
 }

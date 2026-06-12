@@ -40,6 +40,7 @@ export const AUDIT_ACTIONS = [
   // Archivos
   'UPLOAD_FILE',
   'DELETE_FILE',
+  'UPLOAD_VIDEO',
   // Certificados
   'GENERATE_CERTIFICATE',
   // Seguridad / IA
@@ -58,6 +59,7 @@ type AuditableModel =
   | 'Enrollment'
   | 'ModuleAccess'
   | 'FileUpload'
+  | 'VideoUpload'
   | 'Certificate'
   | 'AiSession'
 

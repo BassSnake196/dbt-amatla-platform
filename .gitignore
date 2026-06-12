@@ -24,6 +24,9 @@ build/
 # Almacén local de archivos (mock de R2 — solo desarrollo)
 .almacen-dev/
 
+# Videos locales (mock de Cloudflare Stream — solo desarrollo)
+.stream-dev/
+
 # Logs y temporales
 *.log
 .DS_Store

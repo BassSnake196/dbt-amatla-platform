@@ -45,6 +45,13 @@ const serverSchema = z
     STORAGE_PUBLIC_URL: z.string().url().default('http://localhost:3000/api/almacen-dev'),
     STORAGE_SIGNING_SECRET: z.string().default('amatla-dev-almacen-secreto'),
 
+    // ===== Stream mock local (SOLO desarrollo — Cloudflare Stream en prod) =====
+    STREAM_LOCAL_DIR: z.string().optional(),
+    STREAM_PUBLIC_URL: z.string().url().default('http://localhost:3000/api/stream-dev'),
+    STREAM_SIGNING_SECRET: z.string().default('amatla-dev-stream-secreto'),
+    // Secreto del webhook de Stream — en prod es el que se registra en Cloudflare
+    STREAM_WEBHOOK_SECRET: z.string().default('amatla-dev-stream-webhook-secreto'),
+
     // ===== ClamAV (clamd por TCP — contenedor de docker-compose) =====
     CLAMAV_HOST: z.string().default('localhost'),
     CLAMAV_PORT: z.coerce.number().int().positive().default(3310),

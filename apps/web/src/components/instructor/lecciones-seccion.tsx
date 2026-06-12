@@ -18,7 +18,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { AlignLeft, Check, Eye, FileCheck2, FileText, GripVertical, Pencil, Plus, Trash2, Video, X } from 'lucide-react'
+import { AlignLeft, Check, Eye, FileCheck2, FileText, GripVertical, MonitorPlay, Pencil, Plus, Trash2, Video, X } from 'lucide-react'
 import {
   crearLeccionAction,
   eliminarLeccionAction,
@@ -27,6 +27,7 @@ import {
   type TipoLeccion,
 } from '@/acciones/lecciones'
 import { SubirArchivo } from './subir-archivo'
+import { SubirVideo } from './subir-video'
 
 export interface LeccionItem {
   id: string
@@ -36,6 +37,17 @@ export interface LeccionItem {
   esPreview: boolean
   /** true cuando ya hay un archivo escaneado y enlazado (lecciones PDF). */
   tieneArchivo: boolean
+  /** true cuando ya hay un video procesado y enlazado (lecciones VIDEO). */
+  tieneVideo: boolean
+}
+
+/** 754 → "12:34"; 3725 → "1:02:05" — para el badge de duración del video. */
+function formatearDuracion(segundos: number): string {
+  const h = Math.floor(segundos / 3600)
+  const m = Math.floor((segundos % 3600) / 60)
+  const s = segundos % 60
+  const mm = h > 0 ? String(m).padStart(2, '0') : String(m)
+  return `${h > 0 ? `${h}:` : ''}${mm}:${String(s).padStart(2, '0')}`
 }
 
 const ICONO_TIPO = {
@@ -98,6 +110,7 @@ export function LeccionesSeccion({ cursoId, seccionId, lecciones: iniciales, onE
             duracion: null,
             esPreview: false,
             tieneArchivo: false,
+            tieneVideo: false,
           },
         ])
       }
@@ -259,6 +272,27 @@ function LeccionFila({
 
       {!editando && (
         <span className="flex shrink-0 items-center">
+          {leccion.tipo === 'VIDEO' && (
+            <>
+              {leccion.tieneVideo && (
+                <span
+                  className="mr-0.5 inline-flex items-center gap-0.5 text-[10px] font-medium text-brand-secondary"
+                  aria-label="Video cargado"
+                >
+                  <MonitorPlay size={13} aria-hidden="true" />
+                  {leccion.duracion !== null && formatearDuracion(leccion.duracion)}
+                </span>
+              )}
+              <SubirVideo
+                leccionId={leccion.id}
+                etiqueta={
+                  leccion.tieneVideo
+                    ? `Reemplazar video de ${leccion.titulo}`
+                    : `Subir video a ${leccion.titulo}`
+                }
+              />
+            </>
+          )}
           {leccion.tipo === 'PDF' && (
             <>
               {leccion.tieneArchivo && (

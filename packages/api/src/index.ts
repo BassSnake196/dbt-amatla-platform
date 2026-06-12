@@ -18,3 +18,6 @@ export {
   adminProcedure,
 } from './trpc.js'
 export { auditFromRequest, auditResource } from './audit.js'
+// Productor de la cola media — lo usa el webhook de Stream en apps/web
+// para encolar el procesamiento sin tocar BullMQ directamente.
+export { encolarProcesamientoVideo, type JobVideo } from './cola-media.js'

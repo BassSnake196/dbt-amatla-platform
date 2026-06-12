@@ -17,6 +17,8 @@ const leccionResumen = z.object({
   esPreview: z.boolean(),
   /** true cuando ya hay un archivo escaneado y enlazado (fileKey). */
   tieneArchivo: z.boolean(),
+  /** true cuando ya hay un video procesado y enlazado (videoId). */
+  tieneVideo: z.boolean(),
 })
 
 const seccionResumen = z.object({
@@ -76,6 +78,7 @@ export const seccionesRouter = router({
           duracion: l.duration,
           esPreview: l.isPreview,
           tieneArchivo: l.fileKey !== null,
+          tieneVideo: l.videoId !== null,
         })),
       }))
     }),

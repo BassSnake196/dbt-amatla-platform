@@ -12,24 +12,42 @@ export interface JobEscaneo {
   uploadId: string
 }
 
-let cola: Queue<JobEscaneo> | null = null
+/** Datos del job de video — lo que reportó el webhook de Stream. */
+export interface JobVideo {
+  /** uid del video en Stream (VideoUpload.uid). */
+  uid: string
+  estado: 'ready' | 'error'
+  duracionSegundos?: number
+  detalle?: string
+}
 
-function obtenerCola(): Queue<JobEscaneo> {
+type JobMedia = JobEscaneo | JobVideo
+
+let cola: Queue<JobMedia> | null = null
+
+function obtenerCola(): Queue<JobMedia> {
   if (!cola) {
     const env = loadServerEnv()
-    cola = new Queue<JobEscaneo>('media', {
+    cola = new Queue<JobMedia>('media', {
       connection: new Redis(env.REDIS_URL, { maxRetriesPerRequest: null }),
     })
   }
   return cola
 }
 
+const OPCIONES_JOB = {
+  attempts: 3,
+  backoff: { type: 'exponential', delay: 5000 },
+  removeOnComplete: 100,
+  removeOnFail: 500,
+} as const
+
 /** Encola el escaneo de un archivo recién subido (pipeline ClamAV). */
 export async function encolarEscaneo(datos: JobEscaneo): Promise<void> {
-  await obtenerCola().add('escanear-archivo', datos, {
-    attempts: 3,
-    backoff: { type: 'exponential', delay: 5000 },
-    removeOnComplete: 100,
-    removeOnFail: 500,
-  })
+  await obtenerCola().add('escanear-archivo', datos, OPCIONES_JOB)
+}
+
+/** Encola el procesamiento de un video reportado por el webhook de Stream. */
+export async function encolarProcesamientoVideo(datos: JobVideo): Promise<void> {
+  await obtenerCola().add('procesar-video', datos, OPCIONES_JOB)
 }

@@ -5,6 +5,7 @@
 import { existsSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { AlmacenLocal } from './local.js'
+import { StreamLocal } from './stream.js'
 
 export {
   AlmacenLocal,
@@ -21,6 +22,15 @@ export {
   type ParametrosSubida,
   type ParametrosLectura,
 } from './firmas.js'
+export {
+  StreamLocal,
+  firmarWebhookStream,
+  verificarFirmaWebhookStream,
+  duracionVideoMp4,
+  type StreamVideos,
+  type SubidaDirectaVideo,
+  type ConfigStreamLocal,
+} from './stream.js'
 
 /**
  * Busca la raíz del monorepo (donde vive turbo.json) subiendo desde cwd.
@@ -43,6 +53,12 @@ interface EnvAlmacen {
   STORAGE_SIGNING_SECRET?: string | undefined
 }
 
+interface EnvStream {
+  STREAM_LOCAL_DIR?: string | undefined
+  STREAM_PUBLIC_URL?: string | undefined
+  STREAM_SIGNING_SECRET?: string | undefined
+}
+
 /**
  * Construye el almacén local desde variables de entorno (todas opcionales
  * en desarrollo — los defaults apuntan al mock servido por apps/web).
@@ -53,5 +69,18 @@ export function almacenLocalDesdeEnv(env: EnvAlmacen = process.env): AlmacenLoca
     directorio: env.STORAGE_LOCAL_DIR ?? join(encontrarRaizMonorepo(), '.almacen-dev'),
     urlBase: env.STORAGE_PUBLIC_URL ?? 'http://localhost:3000/api/almacen-dev',
     secreto: env.STORAGE_SIGNING_SECRET ?? 'amatla-dev-almacen-secreto',
+  })
+}
+
+/**
+ * Construye el mock local de Cloudflare Stream desde variables de entorno
+ * (todas opcionales en desarrollo). NUNCA usar este mock en producción:
+ * ahí va StreamCloudflare con las credenciales reales.
+ */
+export function streamLocalDesdeEnv(env: EnvStream = process.env): StreamLocal {
+  return new StreamLocal({
+    directorio: env.STREAM_LOCAL_DIR ?? join(encontrarRaizMonorepo(), '.stream-dev'),
+    urlBase: env.STREAM_PUBLIC_URL ?? 'http://localhost:3000/api/stream-dev',
+    secreto: env.STREAM_SIGNING_SECRET ?? 'amatla-dev-stream-secreto',
   })
 }
