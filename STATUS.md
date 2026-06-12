@@ -1,12 +1,19 @@
 # 📌 Estado del Proyecto: Plataforma E-Learning
-- **Última actualización:** 2026-06-12 (sesión 4) — ✅ FASE 2 COMPLETA: vista previa de lección + publicar/archivar con validación.
-- **Fase Actual:** Fase 2 - Gestión de Cursos (Instructor)
-- **Objetivo del Sprint:** CRUD completo de cursos con uploads (Cloudflare mockeado hasta tener credenciales)
+- **Última actualización:** 2026-06-12 (sesión 5) — Fase 3 iniciada: dashboard de estudiante conectado a datos reales via tRPC.
+- **Fase Actual:** Fase 3 - Experiencia del Estudiante
+- **Objetivo del Sprint:** Portal del estudiante con datos reales — dashboard, vista de curso y reproductor
 
 ## 📋 Roadmap Global
 - [x] Fase 1: Infraestructura y Auth ✅ (2026-06-11)
 - [x] Fase 2: Gestión de Cursos ✅ (2026-06-12)
-- [ ] Fase 3: Experiencia del Estudiante (siguiente)
+- [ ] Fase 3: Experiencia del Estudiante (en curso)
+
+## 🎯 Fase 3 — Experiencia del Estudiante
+- [x] Dashboard de estudiante: cursos asignados (Enrollment), progreso general y próximas sesiones
+- [ ] Vista de curso con sidebar: secciones colapsables, estado por lección (✓ / en progreso / 🔒)
+- [ ] Reproductor de video HLS (Vidstack) con signed URL on-demand y progreso cada 15s
+- [ ] Visor PDF inline (react-pdf) con URL firmada
+- [ ] Barra de progreso por curso
 
 ## 🎯 Tareas del Día (Daily Tasks)
 - [x] Inicializar monorepo con Turborepo
@@ -33,6 +40,9 @@
 - [x] Preview de lección + publicar/archivar con validación
 
 ## 🧠 Memoria de Decisiones (ADRs)
+- **2026-06-12 — Dashboard de estudiante (primera tarea Fase 3):** router `estudiante.dashboard` (`protectedProcedure` — todo keyed por `ctx.user.id` via Enrollment, regla crítica: NUNCA cursos no asignados) devuelve en una llamada `{ enCurso, cursos, sesiones }`. Solo cursos **PUBLISHED** (archivar lo saca de la vista del estudiante). `progreso` = % de lecciones completadas (`Progress.completedAt`); curso sin lecciones → 0 (sin división por cero). Hero "Continuar" = curso no terminado con `Progress.updatedAt` más reciente; lección a retomar: la última tocada si sigue pendiente, si no la primera no completada en orden sección→lección; `leccionNumero` es posición global aplanada; `restanteSegundos` suma `duration` de lecciones pendientes (NULL cuenta 0). `nuevo` = sin progreso y asignado <14 días. `sesiones` = CalendarEvent futuros SOLO de sus cursos inscritos (orden cronológico, take 4). La página `/` (rediseño que ya existía con mocks) ahora llama `apiServer().estudiante.dashboard()`; `cursos-mock.ts` ELIMINADO. Tipos de la UI inferidos del caller (`Awaited<ReturnType<ApiCaller[...]>>` en `lib/tipos-estudiante.ts` — sin duplicar interfaces). Decisiones de UI: se quitó el rating (no hay modelo de valoraciones — no inventar datos); arte generativo de categoría ahora acepta texto libre (paleta determinista por hash del nombre); "Unirse" solo si hay `meetUrl`; estados vacíos cálidos (sin cursos / sin sesiones); fechas UTC→CDMX con `Intl` en `lib/formato.ts` (`TIMEZONE` de `@amatla/shared`). Seed ampliado: `dev-student-1` + cookie `dev-session-student` + Progress de ejemplo + 2 CalendarEvent que SIEMPRE caen los próximos 2 miércoles 18:00 CDMX (expresión SQL con `DO UPDATE` de fechas — re-seedear las refresca). Verificado e2e: portada como estudiante (hero con lección real, catálogo, sesiones con fecha MIÉ), instructora sin inscripciones → estados vacíos, Fastify+curl: dashboard OK / sin sesión 401. 9 tests nuevos — **156 totales** (el "148" de la sesión anterior contaba 1 de más: eran 147).
+- **2026-06-12 — GOTCHA encoding/psql en Windows:** aplicar `seed-dev.sql` con `Get-Content -Raw | docker exec -i` (PowerShell) corrompe los acentos (`Práctica` → `Pr??ctica`). Usar SIEMPRE bash: `docker exec -i amatla-postgres psql ... < packages/db/seed-dev.sql`.
+- **2026-06-12 — Nota dev local:** la BD local tiene datos manipulados por sesiones anteriores (secciones de `curso-dev-1` reordenadas, lecciones de prueba "hOLA"/"sadsdas") — si un número de lección "no cuadra" con el seed, revisar la BD antes de sospechar del código.
 - **2026-06-12 — Publicar/archivar + vista previa (cierra Fase 2):** `cursos.publicar` exige ≥1 lección con contenido LISTO — VIDEO con `videoId` o PDF con `fileKey` enlazados por el worker (una lección VIDEO sin video procesado NO cuenta; TEXT tampoco hasta que exista el campo de contenido — decisión pendiente del ADR de lecciones). Transiciones: publicar desde DRAFT/ARCHIVED, archivar desde DRAFT/PUBLISHED; repetidas → BAD_REQUEST. Auditoría `PUBLISH_COURSE`/`ARCHIVE_COURSE` en transacción. `lecciones.preview` (instructor, ownership 3 niveles) firma URLs on-demand: `urlReproduccion` nuevo en la interfaz `StreamVideos` (TTL 30 min, regla #10; en Cloudflare real será el manifest HLS firmado — el mock sirve el archivo crudo via GET en `/api/stream-dev/[uid]`, sin soporte Range: suficiente para preview en dev). Página `/instructor/cursos/[id]/lecciones/[leccionId]/vista-previa` (server component, `<video>` nativo / `<iframe>` PDF / aviso para TEXT) — valida que `leccion.curso.id` coincida con la URL (404 en ruta cruzada). Botones publicar/archivar (`AccionesCurso`) en la estructura del curso; enlace de vista previa por fila de lección (nueva pestaña). Verificado e2e: curso sin contenido → BAD_REQUEST con mensaje; archivar→republicar OK; GET de video firmado 200 / firma falsa 403; páginas con cookie. 11 tests nuevos — **148 totales**.
 - **2026-06-12 — GOTCHA dnd-kit/hidratación:** `DndContext` sin prop `id` numera `aria-describedby` con un contador global (`DndDescribedBy-N`) que se desfasa entre SSR y cliente (el Strict Mode de dev duplica renders e incrementa el contador) → error de hidratación en consola. Fix: TODO `DndContext` debe llevar `id` determinista (`dnd-secciones-${cursoId}`, `dnd-lecciones-${seccionId}`). Aplicar también en futuros usos de dnd-kit.
 - **2026-06-12 — Mock de Cloudflare Stream (`stream.ts` en `@amatla/storage`):** replica "Direct Creator Uploads": interfaz `StreamVideos` (`crearSubidaDirecta` → uid hex-32 + uploadUrl de un solo uso firmada HMAC con TTL 30 min; `eliminar`) con implementación `StreamLocal` (videos en `<raíz>/.stream-dev`, gitignoreado). El "procesamiento" lo simula el endpoint dev: extrae la duración parseando ISO BMFF (caja `moov > mvhd`, ~60 líneas propias — MP4 y MOV comparten formato; sin FFmpeg) y dispara el webhook firmado **formato Cloudflare** (`Webhook-Signature: time=...,sig1=HMAC(secreto, time.cuerpo)`, ventana anti-replay 5 min) — así el handler del webhook es EL MISMO en dev y prod. Decisión: NO se genera thumbnail en el worker (el prompt lo pedía) porque Cloudflare Stream los sirve gratis por URL (`/thumbnails/thumbnail.jpg`) y Lesson no tiene campo thumbnail — no sobredimensionar. 9 tests.

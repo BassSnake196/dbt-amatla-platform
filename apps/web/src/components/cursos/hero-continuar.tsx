@@ -1,14 +1,14 @@
 import { Play } from 'lucide-react'
-import { CURSO_EN_CURSO } from '@/lib/cursos-mock'
+import type { EnCurso } from '@/lib/tipos-estudiante'
+import { formatearDuracion } from '@/lib/formato'
 
 // Anillo de progreso que "respira" (5s, como ejercicio de respiración consciente).
 // La animación vive en globals.css y respeta prefers-reduced-motion.
 const RADIO = 52
 const CIRCUNFERENCIA = 2 * Math.PI * RADIO
 
-export function HeroContinuar() {
-  const { titulo, leccionActual, progreso, restante } = CURSO_EN_CURSO
-  const offset = CIRCUNFERENCIA * (1 - progreso / 100)
+export function HeroContinuar({ enCurso }: { enCurso: EnCurso }) {
+  const offset = CIRCUNFERENCIA * (1 - enCurso.progreso / 100)
 
   return (
     <section
@@ -21,9 +21,11 @@ export function HeroContinuar() {
             En curso
           </p>
           <h2 id="continuar-titulo" className="mt-3 font-serif text-2xl leading-tight md:text-4xl">
-            {titulo}
+            {enCurso.titulo}
           </h2>
-          <p className="mt-3 text-sm text-white/70 md:text-base">{leccionActual}</p>
+          <p className="mt-3 text-sm text-white/70 md:text-base">
+            Lección {enCurso.leccionNumero} · {enCurso.leccionTitulo}
+          </p>
           <div className="mt-6 flex flex-wrap items-center gap-4">
             <button
               type="button"
@@ -32,7 +34,11 @@ export function HeroContinuar() {
               <Play size={16} fill="currentColor" aria-hidden="true" />
               Continuar lección
             </button>
-            <span className="text-sm text-white/60">{restante}</span>
+            {enCurso.restanteSegundos > 0 && (
+              <span className="text-sm text-white/60">
+                {formatearDuracion(enCurso.restanteSegundos)} restantes
+              </span>
+            )}
           </div>
         </div>
 
@@ -53,7 +59,7 @@ export function HeroContinuar() {
             />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="font-serif text-3xl font-semibold">{progreso}%</span>
+            <span className="font-serif text-3xl font-semibold">{enCurso.progreso}%</span>
             <span className="text-[11px] uppercase tracking-widest text-white/60">completado</span>
           </div>
         </div>

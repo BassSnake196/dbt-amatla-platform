@@ -2,18 +2,25 @@
 
 import { useMemo, useState } from 'react'
 import { GraduationCap, Search } from 'lucide-react'
-import { CATEGORIAS, CURSOS_MOCK, type CategoriaCurso } from '@/lib/cursos-mock'
+import type { CursoAsignado } from '@/lib/tipos-estudiante'
 import { CursoCard } from './curso-card'
 
-// Catálogo con búsqueda y filtros client-side sobre los datos mock.
-// Cuando llegue tRPC (Fase 2/3), el filtrado se moverá al servidor.
-export function Catalogo() {
+// Catálogo de cursos asignados (via Enrollment — datos reales de tRPC).
+// Búsqueda y filtros client-side: a esta escala (<10 cursos por estudiante)
+// no amerita filtrado en servidor.
+export function Catalogo({ cursos }: { cursos: CursoAsignado[] }) {
   const [busqueda, setBusqueda] = useState('')
-  const [categoria, setCategoria] = useState<CategoriaCurso | 'Todos'>('Todos')
+  const [categoria, setCategoria] = useState<string>('Todos')
+
+  // Pills derivadas de los cursos reales — la categoría es texto libre del instructor
+  const categorias = useMemo(
+    () => [...new Set(cursos.map((curso) => curso.categoria))].sort((a, b) => a.localeCompare(b, 'es')),
+    [cursos],
+  )
 
   const cursosFiltrados = useMemo(() => {
     const texto = busqueda.trim().toLowerCase()
-    return CURSOS_MOCK.filter((curso) => {
+    return cursos.filter((curso) => {
       const coincideCategoria = categoria === 'Todos' || curso.categoria === categoria
       const coincideTexto =
         texto === '' ||
@@ -21,7 +28,27 @@ export function Catalogo() {
         curso.instructora.toLowerCase().includes(texto)
       return coincideCategoria && coincideTexto
     })
-  }, [busqueda, categoria])
+  }, [cursos, busqueda, categoria])
+
+  // Sin cursos asignados: bienvenida cálida, sin búsqueda ni filtros vacíos
+  if (cursos.length === 0) {
+    return (
+      <section aria-labelledby="catalogo-titulo">
+        <div className="mb-5 flex items-center gap-2">
+          <GraduationCap className="text-brand-secondary" size={22} aria-hidden="true" />
+          <h3 id="catalogo-titulo" className="font-serif text-xl font-semibold text-brand-dark">
+            Asignados por tu terapeuta
+          </h3>
+        </div>
+        <div className="rounded-card bg-brand-surface p-10 text-center shadow-card">
+          <p className="font-serif text-lg text-brand-dark">Aún no tienes cursos asignados</p>
+          <p className="mt-2 text-sm text-neutral-900/60">
+            Tu terapeuta te asignará los módulos de trabajo. Cuando lo haga, aparecerán aquí.
+          </p>
+        </div>
+      </section>
+    )
+  }
 
   return (
     <section aria-labelledby="catalogo-titulo">
@@ -52,7 +79,7 @@ export function Catalogo() {
 
       {/* Pills de categoría */}
       <div className="mb-6 flex flex-wrap gap-2" role="group" aria-label="Filtrar por categoría">
-        {(['Todos', ...CATEGORIAS] as const).map((cat) => {
+        {['Todos', ...categorias].map((cat) => {
           const activa = categoria === cat
           return (
             <button
