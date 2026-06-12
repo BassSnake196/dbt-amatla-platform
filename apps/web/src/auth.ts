@@ -38,11 +38,21 @@ const nextAuth = NextAuth({
       })
       return existente?.isActive ?? true // usuarios nuevos entran como STUDENT
     },
-    // El rol y el id viajan en la sesión — siempre leídos de BD, nunca del cliente
+    // El rol y el id viajan en la sesión — siempre leídos de BD, nunca del cliente.
+    // IMPORTANTE: devolver un objeto NUEVO con solo lo necesario. Devolver `session`
+    // tal cual filtraba el sessionToken y la fila completa de User al cliente.
     session({ session, user }) {
-      session.user.id = user.id
-      session.user.role = user.role
-      return session
+      return {
+        expires: session.expires,
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          image: user.image,
+          emailVerified: user.emailVerified,
+          role: user.role,
+        },
+      }
     },
   },
 })

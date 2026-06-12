@@ -1,6 +1,6 @@
 // Contexto tRPC — se construye en cada request.
 // Regla de seguridad #6: NUNCA confiar en el rol enviado por el cliente;
-// el usuario se carga siempre desde la BD en el servidor.
+// el usuario se carga siempre desde la BD / sesión del servidor.
 
 import type { CreateFastifyContextOptions } from '@trpc/server/adapters/fastify'
 import { prisma, type Role } from '@amatla/db'
@@ -13,10 +13,36 @@ export interface SessionUser {
   role: Role
 }
 
-export async function createContext({ req, res }: CreateFastifyContextOptions) {
+/** Metadatos del request para auditoría — null cuando no hay request HTTP (workers, scripts). */
+export interface RequestMeta {
+  ip: string | null
+  userAgent: string | null
+}
+
+export interface CreateInnerContextOptions {
+  user: SessionUser | null
+  requestMeta?: RequestMeta
+}
+
+/**
+ * Contexto interno — lo usan el adapter de Fastify Y el caller server-side
+ * de Next.js (Server Components llaman a tRPC sin salto HTTP).
+ */
+export function createContextInner(opts: CreateInnerContextOptions) {
+  return {
+    prisma,
+    user: opts.user,
+    requestMeta: opts.requestMeta ?? { ip: null, userAgent: null },
+  }
+}
+
+export type Context = ReturnType<typeof createContextInner>
+
+/** Adapter Fastify — contexto por request HTTP. */
+export async function createContext({ req }: CreateFastifyContextOptions): Promise<Context> {
   let user: SessionUser | null = null
 
-  // TODO(tarea Auth): reemplazar por verificación real de sesión NextAuth v5 / JWT.
+  // TODO(móvil, Fase 3): verificación de JWT con refresh tokens.
   // Mientras tanto, SOLO en desarrollo, el header `x-dev-user-id` permite
   // suplantar un usuario existente para probar el RBAC de punta a punta.
   const devUserId = req.headers['x-dev-user-id']
@@ -31,7 +57,11 @@ export async function createContext({ req, res }: CreateFastifyContextOptions) {
     }
   }
 
-  return { req, res, prisma, user }
+  return createContextInner({
+    user,
+    requestMeta: {
+      ip: req.ip ?? null,
+      userAgent: typeof req.headers['user-agent'] === 'string' ? req.headers['user-agent'] : null,
+    },
+  })
 }
-
-export type Context = Awaited<ReturnType<typeof createContext>>

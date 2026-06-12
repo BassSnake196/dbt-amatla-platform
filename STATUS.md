@@ -1,7 +1,7 @@
 # 📌 Estado del Proyecto: Plataforma E-Learning
-- **Última actualización:** 2026-06-11 (sesión 2) — CI básico creado y validado localmente. 🎉 **FASE 1 COMPLETA.**
-- **Fase Actual:** Fase 1 - Infraestructura Base
-- **Objetivo del Día (Sprint):** MVP Visual y Plomería Base con APIs Mockeadas
+- **Última actualización:** 2026-06-11 (sesión 2) — Iniciando Fase 2: dashboard de instructor.
+- **Fase Actual:** Fase 2 - Gestión de Cursos (Instructor)
+- **Objetivo del Sprint:** CRUD completo de cursos con uploads (Cloudflare mockeado hasta tener credenciales)
 
 ## 📋 Roadmap Global
 - [x] Fase 1: Infraestructura y Auth ✅ (2026-06-11)
@@ -22,6 +22,15 @@
 - [x] Helper centralizado de AuditLog
 - [x] NextAuth.js v5: Magic Link (Resend) + Google OAuth
 - [x] GitHub Actions: CI básico (type-check + lint + tests)
+
+## 🎯 Fase 2 — Gestión de Cursos (Instructor)
+- [ ] Dashboard de instructor: mis cursos con status y métricas ← **EN CURSO**
+- [ ] CRUD de curso: crear/editar título, descripción, categoría
+- [ ] CRUD de secciones con reordenamiento (dnd-kit)
+- [ ] CRUD de lecciones: VIDEO/PDF/TEXT con reordenamiento
+- [ ] Upload de thumbnail/PDFs (presigned R2 mockeado + pipeline ClamAV)
+- [ ] Upload de video (Cloudflare Stream mockeado + webhook)
+- [ ] Preview de lección + publicar/archivar con validación
 
 ## 🧠 Memoria de Decisiones (ADRs)
 - **2026-06-11 — Scaffolding:** Monorepo creado manualmente (no `create-turbo`) para respetar la estructura exacta del prompt maestro: `apps/`, `packages/{api,db,crypto,ai-safety,shared,ui,config}`, `workers/{media,ai}`, `tests/{integration,e2e,load}`, `.github/workflows/`.

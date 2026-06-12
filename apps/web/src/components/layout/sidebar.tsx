@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { BookOpen, Calendar, Bell, Home, LogOut, Settings, X } from 'lucide-react'
+import { BookOpen, Calendar, Bell, Home, LayoutDashboard, LogOut, Settings, X } from 'lucide-react'
 import { cerrarSesion } from '@/acciones/auth'
 
 const NAV_ITEMS = [
@@ -11,15 +11,21 @@ const NAV_ITEMS = [
   { href: '/calendario', label: 'Calendario', icon: Calendar },
   { href: '/notificaciones', label: 'Notificaciones', icon: Bell },
   { href: '/configuracion', label: 'Configuración', icon: Settings },
-] as const
+]
+
+// Entrada extra solo para instructores y administradores
+const NAV_INSTRUCTOR = { href: '/instructor', label: 'Panel de instructor', icon: LayoutDashboard }
 
 interface SidebarProps {
   open: boolean
+  rol: string
   onClose: () => void
 }
 
-export function Sidebar({ open, onClose }: SidebarProps) {
+export function Sidebar({ open, rol, onClose }: SidebarProps) {
   const pathname = usePathname()
+  const items =
+    rol === 'INSTRUCTOR' || rol === 'SUPER_ADMIN' ? [...NAV_ITEMS, NAV_INSTRUCTOR] : NAV_ITEMS
 
   return (
     <>
@@ -52,7 +58,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         </div>
 
         <nav className="flex-1 space-y-1 px-3 py-4" aria-label="Navegación principal">
-          {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+          {items.map(({ href, label, icon: Icon }) => {
             const active = pathname === href
             return (
               <Link

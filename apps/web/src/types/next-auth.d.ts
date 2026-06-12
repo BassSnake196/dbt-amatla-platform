@@ -13,6 +13,5 @@ declare module 'next-auth' {
 
   interface User {
     role: Role
-    isActive: boolean
   }
 }

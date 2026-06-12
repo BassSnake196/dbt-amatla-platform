@@ -26,8 +26,8 @@ export async function auditFromRequest(
     action,
     resource,
     metadata,
-    ip: ctx.req.ip ?? null,
-    userAgent: ctx.req.headers['user-agent'] ?? null,
+    ip: ctx.requestMeta.ip,
+    userAgent: ctx.requestMeta.userAgent,
   }
   return auditLog(input, client)
 }

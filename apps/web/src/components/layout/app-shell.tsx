@@ -17,7 +17,7 @@ export function AppShell({ usuario, children }: { usuario: UsuarioShell; childre
 
   return (
     <div className="flex min-h-dvh">
-      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar open={sidebarOpen} rol={usuario.rol} onClose={() => setSidebarOpen(false)} />
       <div className="flex min-w-0 flex-1 flex-col">
         <Header usuario={usuario} onOpenSidebar={() => setSidebarOpen(true)} />
         <main className="flex-1 px-4 py-6 md:px-8">{children}</main>

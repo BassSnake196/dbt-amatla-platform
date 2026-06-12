@@ -9,6 +9,7 @@ import type { Context, SessionUser } from './context.js'
 const t = initTRPC.context<Context>().create()
 
 export const router = t.router
+export const createCallerFactory = t.createCallerFactory
 
 /** Nivel 1 — endpoints públicos (ej. verificación de certificados, health). */
 export const publicProcedure = t.procedure

@@ -11,6 +11,7 @@
     "lint": "echo \"lint pendiente (se configura con ESLint en tarea de CI)\""
   },
   "dependencies": {
+    "@amatla/api": "*",
     "@amatla/db": "*",
     "@amatla/shared": "*",
     "@auth/prisma-adapter": "^2.7.4",

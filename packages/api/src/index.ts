@@ -1,7 +1,13 @@
 // @amatla/api — router tRPC + servidor Fastify.
 
-export { appRouter, type AppRouter } from './root.js'
-export { createContext, type Context, type SessionUser } from './context.js'
+export { appRouter, createCaller, type AppRouter, type ApiCaller } from './root.js'
+export {
+  createContext,
+  createContextInner,
+  type Context,
+  type SessionUser,
+  type RequestMeta,
+} from './context.js'
 export { buildServer } from './server.js'
 export {
   router,
