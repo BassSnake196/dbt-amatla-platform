@@ -1,6 +1,6 @@
-import { redirect } from 'next/navigation'
-import { BookOpen, Clock3, Layers, Plus, Users } from 'lucide-react'
-import { auth } from '@/auth'
+import Link from 'next/link'
+import { BookOpen, Clock3, Layers, Pencil, Plus, Users } from 'lucide-react'
+import { exigirInstructor } from '@/lib/guardia'
 import { apiServer } from '@/lib/api-server'
 
 export const metadata = { title: 'Panel de instructor — DBT.Amatla' }
@@ -27,9 +27,7 @@ const formatoFecha = new Intl.DateTimeFormat('es-MX', {
 
 export default async function InstructorPage() {
   // Doble guardia: además del layout con sesión, esta vista exige rol de instructor
-  const session = await auth()
-  const rol = session?.user?.role
-  if (rol !== 'INSTRUCTOR' && rol !== 'SUPER_ADMIN') redirect('/')
+  await exigirInstructor()
 
   const api = await apiServer()
   const cursos = await api.cursos.misCursos()
@@ -48,14 +46,13 @@ export default async function InstructorPage() {
             Tus cursos, su estado y el avance de tus estudiantes.
           </p>
         </div>
-        <button
-          type="button"
+        <Link
+          href="/instructor/cursos/nuevo"
           className="inline-flex items-center gap-2 rounded-full bg-brand-primary px-5 py-2.5 text-sm font-semibold text-brand-dark transition-opacity hover:opacity-90"
-          title="Disponible en la siguiente tarea (CRUD de curso)"
         >
           <Plus size={16} aria-hidden="true" />
           Nuevo curso
-        </button>
+        </Link>
       </section>
 
       {/* Métricas generales */}
@@ -111,6 +108,14 @@ export default async function InstructorPage() {
                       {curso.categoria} · Actualizado el {formatoFecha.format(curso.actualizadoEl)}
                     </p>
                   </div>
+
+                  <Link
+                    href={`/instructor/cursos/${curso.id}/editar`}
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-neutral-100 px-3.5 py-1.5 text-xs font-semibold text-brand-dark transition-colors hover:border-brand-secondary hover:text-brand-secondary"
+                  >
+                    <Pencil size={13} aria-hidden="true" />
+                    Editar
+                  </Link>
 
                   <dl className="flex shrink-0 items-center gap-5 text-xs text-neutral-900/70">
                     <div className="flex items-center gap-1.5">

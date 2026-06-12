@@ -11,6 +11,7 @@
     "dev": "tsx watch --env-file-if-exists=.env src/start.ts",
     "start": "node --env-file-if-exists=.env dist/start.js",
     "type-check": "tsc --noEmit",
+    "test": "vitest run",
     "lint": "echo \"lint pendiente (se configura con ESLint en tarea de CI)\""
   },
   "dependencies": {
@@ -26,6 +27,7 @@
   "devDependencies": {
     "@types/node": "^22.10.2",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^3.2.4"
   }
 }

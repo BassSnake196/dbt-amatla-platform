@@ -1,5 +1,5 @@
 # 📌 Estado del Proyecto: Plataforma E-Learning
-- **Última actualización:** 2026-06-11 (sesión 2) — Iniciando Fase 2: dashboard de instructor.
+- **Última actualización:** 2026-06-11 (sesión 2) — Dashboard de instructor funcionando end-to-end (commit 0b88f60).
 - **Fase Actual:** Fase 2 - Gestión de Cursos (Instructor)
 - **Objetivo del Sprint:** CRUD completo de cursos con uploads (Cloudflare mockeado hasta tener credenciales)
 
@@ -24,7 +24,7 @@
 - [x] GitHub Actions: CI básico (type-check + lint + tests)
 
 ## 🎯 Fase 2 — Gestión de Cursos (Instructor)
-- [ ] Dashboard de instructor: mis cursos con status y métricas ← **EN CURSO**
+- [x] Dashboard de instructor: mis cursos con status y métricas
 - [ ] CRUD de curso: crear/editar título, descripción, categoría
 - [ ] CRUD de secciones con reordenamiento (dnd-kit)
 - [ ] CRUD de lecciones: VIDEO/PDF/TEXT con reordenamiento
@@ -54,6 +54,11 @@
 - **2026-06-11 — Pendiente npm audit:** 2 vulnerabilidades moderadas reportadas tras instalar Next — revisar `npm audit` en la tarea de CI/security-scan.
 - **2026-06-11 — Crypto implementado:** AES-256-GCM en `@amatla/crypto` con formato `iv:authTag:ciphertext` (hex). Mejora sobre el prompt: derivación de clave **perezosa con caché** (scrypt corre una sola vez, el módulo puede importarse antes de cargar el env, y `__resetKeyCache()` permite tests/rotación de secretos). `decryptField` devuelve `null` ante datos corruptos; `decrypt` lanza ante authTag inválido. 13 tests Vitest: roundtrip, acentos/unicode/emoji, textos largos, string vacío, IV aleatorio, detección de manipulación, formatos inválidos, env faltante.
 - **2026-06-11 — Vitest 3:** se instaló vitest **3.2.6** (no 2.x — la 2.1.x traía una vulnerabilidad CRÍTICA de RCE vía su API en watch mode, CVE-2025-24964). Tests excluidos del build (`exclude: src/**/*.test.ts` en tsconfig) para que no lleguen a `dist/`.
+- **2026-06-11 — Git:** repo propio inicializado en la raíz del proyecto (rama `main`). Commits: `2fb9e1d` (Fase 1), `0b88f60` (dashboard instructor). Falta crear remote en GitHub. Pendiente menor: `.gitattributes` para normalizar CRLF/LF y gitignorar `tsbuildinfo`/`.claude/scheduled_tasks.lock`.
+- **2026-06-11 — Patrón tRPC server-side:** los Server Components llaman procedures via `createCaller(createContextInner(...))` (sin HTTP) construyendo el contexto desde la sesión NextAuth — `apps/web/src/lib/api-server.ts`. El server Fastify queda para clientes externos/móvil. Contexto refactorizado: `requestMeta { ip, userAgent }` en vez de exponer req/res; `auditFromRequest` lo usa.
+- **2026-06-11 — Dashboard instructor:** `cursos.misCursos` con ownership (`where instructorId = ctx.user.id`), métricas via `_count`. Página `/instructor` con doble guardia (layout exige sesión + página exige rol INSTRUCTOR/SUPER_ADMIN — verificado: STUDENT → redirect a `/`). Sidebar muestra "Panel de instructor" solo a esos roles. Tipo `ApiCaller` exportado para evitar TS2742.
+- **2026-06-11 — SECURITY FIX sesión:** el callback `session` de NextAuth devolvía el objeto del adapter tal cual → **filtraba `sessionToken` y la fila completa de User** en `/api/auth/session` (anulaba httpOnly). Ahora devuelve objeto nuevo solo con `{ expires, user: {id, name, email, image, role} }`. Verificado.
+- **2026-06-11 — Trampas de verificación local:** (1) Windows PowerShell 5.1 **descarta el header Cookie** en Invoke-WebRequest → usar `curl -b` para probar sesiones. (2) `next start` local requiere `AUTH_TRUST_HOST=true` (ya en .env.local). (3) React inserta `<!-- -->` entre nodos de texto SSR — grep de textos compuestos falla aunque se rendericen bien. (4) Seed reutilizable: `packages/db/seed-dev.sql` (idempotente) con sesiones de prueba `dev-session-instructor`/`dev-session-student` para curl.
 - **2026-06-11 — CI básico:** `.github/workflows/ci-web.yml` — en cada PR/push a main: Node 22 + npm ci → `prisma migrate deploy` contra service container postgres:16 → `turbo run build type-check lint test`. Secretos dummy de CI declarados en el workflow (nunca productivos). Pipeline validado localmente: 34/34 tareas. **Pendientes:** ESLint real (los scripts lint son placeholders), workflows de deploy/E2E/security-scan (Fase 6), y **crear el repo GitHub** (git init propio del proyecto + remote) para activar el CI.
 - **2026-06-11 — Nota Windows/Prisma:** `prisma generate` falla con EPERM si el dev server de Next está corriendo (bloquea el DLL del query engine). Detener `next dev` antes de regenerar el cliente. No afecta CI (Linux).
 - **2026-06-11 — NextAuth v5:** sesiones **en BD** (no JWT) — invalidar tokens al cambiar rol/desactivar = borrar filas de `Session`. Migración `add_nextauth_models` (Account/Session/VerificationToken; `User.name` ahora **opcional** — el alta por Magic Link crea usuario solo con email; `avatar`→`image` por convención del adapter). Callbacks: `signIn` bloquea cuentas `isActive: false`; `session` agrega id+rol leídos de BD. Páginas: `/iniciar-sesion` (Magic Link + Google, panel de marca con Ψ) y `/iniciar-sesion/enlace-enviado`. Rutas protegidas via layout del grupo `(plataforma)` (no middleware — sesiones de BD no corren en edge). Logout en sidebar via server action. Workaround TS2742 de next-auth beta: exports anotados con `NextAuthResult`.

@@ -8,7 +8,8 @@ export {
   type SessionUser,
   type RequestMeta,
 } from './context.js'
-export { buildServer } from './server.js'
+// NOTA: buildServer NO se re-exporta aquí a propósito — el entry raíz lo consume
+// Next.js (apps/web) y no debe arrastrar Fastify. El servidor arranca via start.ts.
 export {
   router,
   publicProcedure,
