@@ -4,11 +4,13 @@ import { router, createCallerFactory } from './trpc.js'
 import { healthRouter } from './routers/health.js'
 import { authRouter } from './routers/auth.js'
 import { cursosRouter } from './routers/cursos.js'
+import { seccionesRouter } from './routers/secciones.js'
 
 export const appRouter = router({
   health: healthRouter,
   auth: authRouter,
   cursos: cursosRouter,
+  secciones: seccionesRouter,
 })
 
 /** Tipo del router — lo consume el cliente tRPC en apps/web para type-safety extremo a extremo. */

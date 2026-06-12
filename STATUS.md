@@ -1,5 +1,5 @@
 # 📌 Estado del Proyecto: Plataforma E-Learning
-- **Última actualización:** 2026-06-11 (sesión 2) — Dashboard de instructor funcionando end-to-end (commit 0b88f60).
+- **Última actualización:** 2026-06-11 (sesión 2) — CRUD de curso + dev-login (commit b06ebb7).
 - **Fase Actual:** Fase 2 - Gestión de Cursos (Instructor)
 - **Objetivo del Sprint:** CRUD completo de cursos con uploads (Cloudflare mockeado hasta tener credenciales)
 
@@ -25,7 +25,7 @@
 
 ## 🎯 Fase 2 — Gestión de Cursos (Instructor)
 - [x] Dashboard de instructor: mis cursos con status y métricas
-- [ ] CRUD de curso: crear/editar título, descripción, categoría
+- [x] CRUD de curso: crear/editar título, descripción, categoría
 - [ ] CRUD de secciones con reordenamiento (dnd-kit)
 - [ ] CRUD de lecciones: VIDEO/PDF/TEXT con reordenamiento
 - [ ] Upload de thumbnail/PDFs (presigned R2 mockeado + pipeline ClamAV)
@@ -54,6 +54,9 @@
 - **2026-06-11 — Pendiente npm audit:** 2 vulnerabilidades moderadas reportadas tras instalar Next — revisar `npm audit` en la tarea de CI/security-scan.
 - **2026-06-11 — Crypto implementado:** AES-256-GCM en `@amatla/crypto` con formato `iv:authTag:ciphertext` (hex). Mejora sobre el prompt: derivación de clave **perezosa con caché** (scrypt corre una sola vez, el módulo puede importarse antes de cargar el env, y `__resetKeyCache()` permite tests/rotación de secretos). `decryptField` devuelve `null` ante datos corruptos; `decrypt` lanza ante authTag inválido. 13 tests Vitest: roundtrip, acentos/unicode/emoji, textos largos, string vacío, IV aleatorio, detección de manipulación, formatos inválidos, env faltante.
 - **2026-06-11 — Vitest 3:** se instaló vitest **3.2.6** (no 2.x — la 2.1.x traía una vulnerabilidad CRÍTICA de RCE vía su API en watch mode, CVE-2025-24964). Tests excluidos del build (`exclude: src/**/*.test.ts` en tsconfig) para que no lleguen a `dist/`.
+- **2026-06-11 — CRUD curso:** `cursos.crear/actualizar/obtener` con helper `cursoPropio()` (instructor solo lo suyo; SUPER_ADMIN todo; NOT_FOUND sin revelar existencia). Curso+auditoría en una transacción. Formulario compartido (`CursoForm` con useActionState, errores Zod parseados a texto legible). 6 tests de integración del router. Guard `exigirInstructor()` en `lib/guardia.ts`.
+- **2026-06-11 — Dev login:** `/api/dev-login?como=instructora|estudiante|admin` (bloqueado en producción) crea/renueva la sesión en BD y pone la cookie httpOnly — permite entrar desde el navegador sin Resend/Google.
+- **2026-06-11 — GOTCHA dist de api:** la web consume `@amatla/api` COMPILADO (dist). Tras cambiar el router hay que `turbo run build --filter=@amatla/api` o el dev server de Next sigue con la versión vieja (síntoma: "procedure not found" → mi catch lo volvía 404). Mejora pendiente: entry separado o transpilePackages para DX. Además el entry raíz ya NO re-exporta `buildServer` (la web no debe arrastrar Fastify).
 - **2026-06-11 — Git:** repo propio inicializado en la raíz del proyecto (rama `main`). Commits: `2fb9e1d` (Fase 1), `0b88f60` (dashboard instructor). Falta crear remote en GitHub. Pendiente menor: `.gitattributes` para normalizar CRLF/LF y gitignorar `tsbuildinfo`/`.claude/scheduled_tasks.lock`.
 - **2026-06-11 — Patrón tRPC server-side:** los Server Components llaman procedures via `createCaller(createContextInner(...))` (sin HTTP) construyendo el contexto desde la sesión NextAuth — `apps/web/src/lib/api-server.ts`. El server Fastify queda para clientes externos/móvil. Contexto refactorizado: `requestMeta { ip, userAgent }` en vez de exponer req/res; `auditFromRequest` lo usa.
 - **2026-06-11 — Dashboard instructor:** `cursos.misCursos` con ownership (`where instructorId = ctx.user.id`), métricas via `_count`. Página `/instructor` con doble guardia (layout exige sesión + página exige rol INSTRUCTOR/SUPER_ADMIN — verificado: STUDENT → redirect a `/`). Sidebar muestra "Panel de instructor" solo a esos roles. Tipo `ApiCaller` exportado para evitar TS2742.

@@ -50,7 +50,7 @@ const datosCurso = z.object({
  * Ownership (regla #7): un instructor solo toca SUS cursos.
  * SUPER_ADMIN puede operar sobre cualquiera.
  */
-async function cursoPropio(ctx: Context & { user: SessionUser }, cursoId: string) {
+export async function cursoPropio(ctx: Context & { user: SessionUser }, cursoId: string) {
   const where: Prisma.CourseWhereInput =
     ctx.user.role === 'SUPER_ADMIN'
       ? { id: cursoId }

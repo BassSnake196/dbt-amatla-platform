@@ -95,9 +95,12 @@ export default async function InstructorPage() {
                 >
                   <div className="min-w-0 flex-1 basis-64">
                     <div className="flex items-center gap-3">
-                      <h3 className="truncate font-serif text-base font-semibold text-brand-dark">
+                      <Link
+                        href={`/instructor/cursos/${curso.id}`}
+                        className="truncate font-serif text-base font-semibold text-brand-dark hover:text-brand-secondary"
+                      >
                         {curso.titulo}
-                      </h3>
+                      </Link>
                       <span
                         className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${status.clases}`}
                       >

@@ -22,6 +22,11 @@ export const AUDIT_ACTIONS = [
   'CHANGE_ROLE',
   'ACTIVATE_USER',
   'DEACTIVATE_USER',
+  // Secciones
+  'CREATE_SECTION',
+  'UPDATE_SECTION',
+  'DELETE_SECTION',
+  'REORDER_SECTIONS',
   // Acceso y asignación
   'ASSIGN_COURSE',
   'REVOKE_ENROLLMENT',
