@@ -140,7 +140,14 @@ export function LeccionesSeccion({ cursoId, seccionId, lecciones: iniciales, onE
       {lecciones.length === 0 ? (
         <p className="py-1 text-xs text-neutral-900/50">Sin lecciones todavía.</p>
       ) : (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={alTerminarArrastre}>
+        // id determinista: sin él, dnd-kit numera con un contador global y
+        // el aria-describedby del SSR no coincide con el del cliente
+        <DndContext
+          id={`dnd-lecciones-${seccionId}`}
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={alTerminarArrastre}
+        >
           <SortableContext items={lecciones.map((l) => l.id)} strategy={verticalListSortingStrategy}>
             <ol className="space-y-1.5">
               {lecciones.map((leccion) => (

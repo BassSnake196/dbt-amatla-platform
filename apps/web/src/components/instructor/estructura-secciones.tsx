@@ -120,7 +120,14 @@ export function EstructuraSecciones({ cursoId, secciones: iniciales }: Estructur
           Aún no hay secciones. Agrega la primera para empezar a estructurar el curso.
         </p>
       ) : (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={alTerminarArrastre}>
+        // id determinista: sin él, dnd-kit numera con un contador global y
+        // el aria-describedby del SSR no coincide con el del cliente
+        <DndContext
+          id={`dnd-secciones-${cursoId}`}
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={alTerminarArrastre}
+        >
           <SortableContext items={secciones.map((s) => s.id)} strategy={verticalListSortingStrategy}>
             <ol className="space-y-2">
               {secciones.map((seccion, indice) => (
