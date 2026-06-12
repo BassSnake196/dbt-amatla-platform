@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Paleta DBT.Amatla — fuente única de verdad de los colores de marca */
+:root {
+  --color-brand-primary: #f5a623; /* naranja cálido — CTAs, acentos, progreso */
+  --color-brand-secondary: #2e7d6b; /* verde teal — nav activa, estados completados */
+  --color-brand-dark: #1a3a35; /* verde noche — headers, textos importantes */
+  --color-brand-surface: #f9edd5; /* crema suave — fondos de contenido */
+  --color-neutral-50: #fafaf8;
+  --color-neutral-100: #f2f0ec;
+  --color-neutral-900: #1c1c1a;
+  --color-danger: #c0392b; /* alertas de crisis — usar con cuidado */
+}
+
+body {
+  /* Crema solo en paneles de contenido — el fondo global es neutro cálido */
+  background-color: var(--color-neutral-50);
+  color: var(--color-neutral-900);
+}
+
+/* Firma de la página de inicio: el anillo de progreso "respira" como
+   un ejercicio de respiración consciente (inhala 2.5s, exhala 2.5s). */
+@keyframes respirar {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.045);
+  }
+}
+
+.anillo-respira {
+  animation: respirar 5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anillo-respira {
+    animation: none;
+  }
+}

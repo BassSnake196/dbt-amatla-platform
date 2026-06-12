@@ -1,0 +1,29 @@
+{
+  "name": "@amatla/config",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Configuraciones compartidas: TypeScript, env tipado con Zod",
+  "type": "module",
+  "main": "./dist/env.js",
+  "types": "./dist/env.d.ts",
+  "files": [
+    "tsconfig.base.json",
+    "tsconfig.node.json",
+    "tsconfig.nextjs.json",
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "echo \"lint pendiente (se configura con ESLint en tarea de CI)\""
+  },
+  "dependencies": {
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2",
+    "vitest": "^3.2.4"
+  }
+}

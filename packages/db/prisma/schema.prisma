@@ -1,0 +1,369 @@
+// Schema Prisma — Plataforma E-Learning DBT.Amatla
+// Los campos marcados [ENCRYPTED] se cifran con AES-256-GCM via @amatla/crypto
+// ANTES de persistir. Nunca guardar esos valores en texto plano.
+// Todas las fechas se guardan en UTC; la conversión a America/Mexico_City es responsabilidad de la UI.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===== Enums =====
+
+enum Role {
+  SUPER_ADMIN
+  INSTRUCTOR
+  MODERATOR
+  STUDENT
+}
+
+enum CourseStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum LessonType {
+  VIDEO
+  PDF
+  QUIZ
+  TEXT
+}
+
+// ===== Usuarios y roles =====
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  // Opcional: el alta por Magic Link crea el usuario solo con email;
+  // el nombre se completa en el primer inicio de sesión o lo asigna el admin.
+  name          String?
+  emailVerified DateTime?
+  role          Role      @default(STUDENT)
+  image         String?
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relaciones Auth.js
+  accounts Account[]
+  sessions Session[]
+
+  // Relaciones
+  coursesCreated      Course[]       @relation("InstructorCourses")
+  enrollments         Enrollment[]   @relation("StudentEnrollments")
+  enrollmentsAssigned Enrollment[]   @relation("EnrollmentsAssigned")
+  moduleAccessGranted ModuleAccess[] @relation("ModuleAccessGranted")
+  clinicalNotes       ClinicalNote[] @relation("StudentClinicalNotes")
+  clinicalNotesMade   ClinicalNote[] @relation("ClinicalNotesCreated")
+  comments            Comment[]
+  aiSessions          AiSession[]
+  notifications       Notification[]
+  calendarEvents      CalendarEvent[]
+  auditLogs           AuditLog[]
+  fileUploads         FileUpload[]
+}
+
+// ===== Auth.js (NextAuth v5) — sesiones en BD para poder invalidarlas
+// al cambiar rol o desactivar cuenta (requerimiento de seguridad) =====
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  sessionToken String   @id
+  userId       String
+  expires      DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
+}
+
+// ===== Estructura de cursos =====
+
+model Course {
+  id            String       @id @default(cuid())
+  title         String
+  description   String       @db.Text
+  thumbnail     String? // key en R2 — la URL firmada se genera on-demand
+  status        CourseStatus @default(DRAFT)
+  instructorId  String
+  category      String
+  totalDuration Int          @default(0) // segundos
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  instructor     User            @relation("InstructorCourses", fields: [instructorId], references: [id])
+  sections       Section[]
+  enrollments    Enrollment[]
+  calendarEvents CalendarEvent[]
+
+  @@index([instructorId])
+  @@index([status])
+}
+
+model Section {
+  id          String  @id @default(cuid())
+  courseId    String
+  title       String
+  order       Int
+  description String?
+
+  course       Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons      Lesson[]
+  moduleAccess ModuleAccess[]
+
+  @@index([courseId, order])
+}
+
+model Lesson {
+  id        String     @id @default(cuid())
+  sectionId String
+  title     String
+  order     Int
+  type      LessonType
+  videoId   String? // ID en Cloudflare Stream (NO la URL)
+  fileKey   String? // Key en R2 (NO la URL firmada)
+  duration  Int? // segundos
+  isPreview Boolean    @default(false)
+
+  section  Section    @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  progress Progress[]
+  comments Comment[]
+
+  @@index([sectionId, order])
+}
+
+// ===== Inscripciones y acceso granular =====
+
+model Enrollment {
+  id            String    @id @default(cuid())
+  studentId     String
+  courseId      String
+  enrolledAt    DateTime  @default(now())
+  assignedBy    String // userId del instructor o admin que asignó
+  completedAt   DateTime?
+  certificateId String?
+
+  student        User           @relation("StudentEnrollments", fields: [studentId], references: [id])
+  course         Course         @relation(fields: [courseId], references: [id])
+  assignedByUser User           @relation("EnrollmentsAssigned", fields: [assignedBy], references: [id])
+  moduleAccess   ModuleAccess[]
+  progress       Progress[]
+  clinicalNotes  ClinicalNote[]
+  aiSessions     AiSession[]
+  certificate    Certificate?
+
+  // Un estudiante no puede inscribirse dos veces al mismo curso
+  @@unique([studentId, courseId])
+  @@index([courseId])
+}
+
+model ModuleAccess {
+  // Asignación granular: qué secciones específicas puede ver el estudiante
+  id           String   @id @default(cuid())
+  enrollmentId String
+  sectionId    String
+  grantedAt    DateTime @default(now())
+  grantedBy    String
+
+  enrollment    Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  section       Section    @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  grantedByUser User       @relation("ModuleAccessGranted", fields: [grantedBy], references: [id])
+
+  @@unique([enrollmentId, sectionId])
+}
+
+model Progress {
+  id             String    @id @default(cuid())
+  enrollmentId   String
+  lessonId       String
+  watchedSeconds Int       @default(0)
+  completedAt    DateTime?
+  lastPosition   Int       @default(0) // segundos — para reanudar reproducción
+  updatedAt      DateTime  @updatedAt
+
+  enrollment Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  lesson     Lesson     @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  // Un registro de progreso por lección por inscripción
+  @@unique([enrollmentId, lessonId])
+}
+
+// ===== Datos clínicos sensibles =====
+
+model ClinicalNote {
+  // Respuestas a escalas clínicas y notas libres — DATOS SENSIBLES (LFPDPPP)
+  id           String   @id @default(cuid())
+  studentId    String
+  enrollmentId String
+  type         String // 'GHQ12' | 'DASS21' | 'FREE_NOTE' | 'SCALE_OVERCONTROL'
+  content      String   @db.Text // [ENCRYPTED] AES-256-GCM
+  score        String? // [ENCRYPTED] resultado numérico si aplica
+  createdAt    DateTime @default(now())
+  createdBy    String // studentId o instructorId
+
+  student       User       @relation("StudentClinicalNotes", fields: [studentId], references: [id])
+  enrollment    Enrollment @relation(fields: [enrollmentId], references: [id])
+  createdByUser User       @relation("ClinicalNotesCreated", fields: [createdBy], references: [id])
+
+  @@index([studentId])
+  @@index([enrollmentId])
+}
+
+// ===== Comunidad =====
+
+model Comment {
+  id        String   @id @default(cuid())
+  lessonId  String
+  userId    String
+  parentId  String? // self-ref para respuestas
+  body      String   @db.Text // sanitizado con DOMPurify server-side
+  isHidden  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  lesson  Lesson    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  user    User      @relation(fields: [userId], references: [id])
+  parent  Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies Comment[] @relation("CommentReplies")
+
+  @@index([lessonId])
+}
+
+// ===== IA =====
+
+model AiSession {
+  // Una sesión de chat con el asistente de estudio
+  id           String   @id @default(cuid())
+  userId       String
+  enrollmentId String?
+  feature      String // 'STUDY_ASSISTANT' | 'QUIZ_GEN' | 'SUMMARY' | 'FEEDBACK'
+  messages     Json // [ENCRYPTED] historial completo
+  tokensIn     Int      @default(0)
+  tokensOut    Int      @default(0)
+  costEstimate Float    @default(0)
+  riskFlagged  Boolean  @default(false) // true si el pipeline safety detectó contenido de crisis
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user       User        @relation(fields: [userId], references: [id])
+  enrollment Enrollment? @relation(fields: [enrollmentId], references: [id])
+
+  @@index([userId])
+  @@index([riskFlagged])
+}
+
+// ===== Notificaciones y certificados =====
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  type      String
+  title     String
+  body      String
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+}
+
+model Certificate {
+  id           String   @id @default(cuid())
+  enrollmentId String   @unique
+  url          String // URL pública en R2
+  issuedAt     DateTime @default(now())
+  verifyCode   String   @unique @default(cuid())
+
+  enrollment Enrollment @relation(fields: [enrollmentId], references: [id])
+}
+
+// ===== Calendario =====
+
+model CalendarEvent {
+  id        String   @id @default(cuid())
+  courseId  String?
+  title     String
+  startAt   DateTime
+  endAt     DateTime
+  meetUrl   String? // sesiones en vivo de Google Meet — solo se muestra el enlace
+  createdBy String
+
+  course        Course? @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  createdByUser User    @relation(fields: [createdBy], references: [id])
+
+  @@index([startAt])
+}
+
+// ===== Auditoría y archivos =====
+
+model AuditLog {
+  // Registro inmutable de acciones de admins e instructores.
+  // Solo INSERT desde la app — nunca UPDATE ni DELETE.
+  id        String   @id @default(cuid())
+  userId    String
+  action    String // 'CREATE_COURSE' | 'DELETE_USER' | 'CHANGE_ROLE' | 'CRISIS_DETECTED' | etc.
+  resource  String // 'Course:abc123' | 'User:xyz789'
+  metadata  Json?
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([action])
+}
+
+model FileUpload {
+  // Registro de archivos subidos — para auditoría y limpieza
+  id         String   @id @default(cuid())
+  uploadedBy String
+  r2Key      String   @unique
+  fileName   String
+  mimeType   String
+  sizeBytes  Int
+  scanStatus String   @default("PENDING") // PENDING | CLEAN | INFECTED | ERROR
+  scanResult String?
+  createdAt  DateTime @default(now())
+
+  uploader User @relation(fields: [uploadedBy], references: [id])
+
+  @@index([scanStatus])
+}

@@ -1,0 +1,81 @@
+# Infraestructura local de desarrollo — Plataforma E-Learning DBT.Amatla
+# Levantar con: docker compose up -d
+# Las credenciales coinciden con .env.example (SOLO para desarrollo local).
+
+name: amatla-dev
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: amatla-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: amatla
+      POSTGRES_PASSWORD: amatla_dev
+      POSTGRES_DB: amatla_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U amatla -d amatla_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: amatla-redis
+    restart: unless-stopped
+    # AOF habilitado para no perder jobs de BullMQ entre reinicios del contenedor
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4:8
+    container_name: amatla-pgadmin
+    restart: unless-stopped
+    environment:
+      # pgAdmin valida el TLD del correo — dominios .local son rechazados
+      PGADMIN_DEFAULT_EMAIL: admin@amatla.dev
+      PGADMIN_DEFAULT_PASSWORD: amatla_dev
+      # Sin pantalla de login maestro en local
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  clamav:
+    image: clamav/clamav:1.4
+    container_name: amatla-clamav
+    restart: unless-stopped
+    # Puerto TCP de clamd — el worker de media se conecta aquí para escanear archivos
+    ports:
+      - "3310:3310"
+    volumes:
+      - clamav_data:/var/lib/clamav
+    healthcheck:
+      test: ["CMD-SHELL", "clamdscan --ping 1 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      # La descarga inicial de firmas de virus tarda varios minutos
+      start_period: 5m
+
+volumes:
+  postgres_data:
+  redis_data:
+  pgadmin_data:
+  clamav_data:

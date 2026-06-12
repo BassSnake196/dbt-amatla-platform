@@ -1,0 +1,21 @@
+{
+  "name": "@amatla/crypto",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Módulo de cifrado AES-256-GCM (field-level) — ÚNICA capa de cifrado de la plataforma",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "echo \"lint pendiente (se configura con ESLint en tarea de CI)\""
+  },
+  "devDependencies": {
+    "@amatla/config": "*",
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2",
+    "vitest": "^3.2.4"
+  }
+}

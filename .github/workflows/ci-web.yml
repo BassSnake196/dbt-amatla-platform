@@ -1,0 +1,57 @@
+# CI básico (Fase 1): type-check + lint + tests + build en cada PR y push a main.
+# Los workflows de deploy (Vercel/Railway), E2E y security-scan llegan en Fase 6.
+
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  quality:
+    name: Calidad (type-check · lint · tests · build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: amatla
+          POSTGRES_PASSWORD: amatla_ci
+          POSTGRES_DB: amatla_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U amatla -d amatla_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://amatla:amatla_ci@localhost:5432/amatla_ci
+      # Secretos dummy SOLO para CI — nunca usar en producción
+      AUTH_SECRET: ci-secret-no-productivo-0123456789abcdef
+      ENCRYPTION_MASTER_KEY: ci-master-key-no-productiva-0123456789abcdef
+      ENCRYPTION_SALT: ci-salt-no-productiva
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Migraciones (BD de pruebas)
+        run: npx prisma migrate deploy --schema=packages/db/prisma/schema.prisma
+
+      - name: Build + type-check + lint + tests
+        run: npx turbo run build type-check lint test
