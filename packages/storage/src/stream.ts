@@ -9,6 +9,7 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { dirname, resolve, sep } from 'node:path'
+import type { UrlFirmada } from './local.js'
 
 export interface SubidaDirectaVideo {
   /** ID del video en Stream — esto es lo único que se guarda en BD. */
@@ -21,6 +22,12 @@ export interface SubidaDirectaVideo {
 /** Interfaz común — StreamCloudflare (futuro) debe cumplirla también. */
 export interface StreamVideos {
   crearSubidaDirecta(opciones: { maxBytes: number; ttlSegundos?: number }): Promise<SubidaDirectaVideo>
+  /**
+   * URL de reproducción firmada, generada ON-DEMAND con TTL máximo de 30 min
+   * (regla de seguridad #10 — NUNCA se guarda en BD). En Cloudflare real será
+   * el manifest HLS con token firmado; el mock sirve el archivo crudo.
+   */
+  urlReproduccion(uid: string, ttlSegundos?: number): Promise<UrlFirmada>
   eliminar(uid: string): Promise<void>
 }
 
@@ -34,6 +41,7 @@ export interface ConfigStreamLocal {
 }
 
 const TTL_SUBIDA_DEFAULT = 30 * 60 // 30 min para completar la subida del video
+const TTL_LECTURA_DEFAULT = 30 * 60 // regla de seguridad #10: máximo 30 min
 
 // uids estilo Cloudflare Stream: 32 caracteres hex
 const UID_VALIDO = /^[a-f0-9]{32}$/
@@ -85,6 +93,22 @@ export class StreamLocal implements StreamVideos {
     if (!UID_VALIDO.test(uid)) return false
     if (p.exp * 1000 < ahora.getTime()) return false
     const esperada = hmacHex(this.config.secreto, `STREAM-PUT\n${uid}\n${p.exp}\n${p.max}`)
+    return firmasCoinciden(esperada, firma)
+  }
+
+  async urlReproduccion(uid: string, ttlSegundos = TTL_LECTURA_DEFAULT): Promise<UrlFirmada> {
+    this.rutaDe(uid) // valida el uid
+    const exp = Math.floor(Date.now() / 1000) + ttlSegundos
+    const firma = hmacHex(this.config.secreto, `STREAM-GET\n${uid}\n${exp}`)
+    const query = new URLSearchParams({ exp: String(exp), firma })
+    return { url: `${this.config.urlBase}/${uid}?${query}`, expiraEn: new Date(exp * 1000) }
+  }
+
+  /** Verificación del GET — la usa el endpoint mock antes de servir. */
+  verificarLectura(uid: string, p: { exp: number }, firma: string, ahora: Date = new Date()): boolean {
+    if (!UID_VALIDO.test(uid)) return false
+    if (p.exp * 1000 < ahora.getTime()) return false
+    const esperada = hmacHex(this.config.secreto, `STREAM-GET\n${uid}\n${p.exp}`)
     return firmasCoinciden(esperada, firma)
   }
 

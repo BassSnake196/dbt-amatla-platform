@@ -7,6 +7,8 @@ import { z } from 'zod'
 import { TRPCError } from '@trpc/server'
 import { router, instructorProcedure } from '../trpc.js'
 import { auditFromRequest, auditResource } from '../audit.js'
+import { obtenerAlmacen } from '../almacen.js'
+import { obtenerStream } from '../stream.js'
 import { seccionPropia } from './secciones.js'
 import type { Context, SessionUser } from '../context.js'
 
@@ -25,7 +27,9 @@ const datosLeccion = z.object({
 export async function leccionPropia(ctx: Context & { user: SessionUser }, leccionId: string) {
   const leccion = await ctx.prisma.lesson.findUnique({
     where: { id: leccionId },
-    include: { section: { include: { course: { select: { id: true, instructorId: true } } } } },
+    include: {
+      section: { include: { course: { select: { id: true, instructorId: true, title: true } } } },
+    },
   })
   const esDuena =
     leccion &&
@@ -37,6 +41,45 @@ export async function leccionPropia(ctx: Context & { user: SessionUser }, leccio
 }
 
 export const leccionesRouter = router({
+  /**
+   * Vista previa para el instructor: la lección como la verá el estudiante.
+   * Las URLs de video/PDF se firman ON-DEMAND con TTL 30 min (regla #10) —
+   * nunca viven en BD ni se devuelven sin verificar ownership.
+   */
+  preview: instructorProcedure
+    .input(z.object({ id: z.string() }))
+    .output(
+      z.object({
+        id: z.string(),
+        titulo: z.string(),
+        tipo: z.enum(['VIDEO', 'PDF', 'QUIZ', 'TEXT']),
+        duracion: z.number().int().nullable(),
+        esPreview: z.boolean(),
+        curso: z.object({ id: z.string(), titulo: z.string() }),
+        seccionTitulo: z.string(),
+        urlVideo: z.string().nullable(),
+        urlPdf: z.string().nullable(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const leccion = await leccionPropia(ctx, input.id)
+      const urlVideo = leccion.videoId
+        ? (await obtenerStream().urlReproduccion(leccion.videoId)).url
+        : null
+      const urlPdf = leccion.fileKey ? obtenerAlmacen().urlLectura(leccion.fileKey).url : null
+      return {
+        id: leccion.id,
+        titulo: leccion.title,
+        tipo: leccion.type,
+        duracion: leccion.duration,
+        esPreview: leccion.isPreview,
+        curso: { id: leccion.section.course.id, titulo: leccion.section.course.title },
+        seccionTitulo: leccion.section.title,
+        urlVideo,
+        urlPdf,
+      }
+    }),
+
   /** Crear lección al final de una sección propia. */
   crear: instructorProcedure
     .input(datosLeccion.extend({ seccionId: z.string() }))

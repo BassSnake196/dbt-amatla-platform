@@ -44,6 +44,30 @@ export async function crearCursoAction(
   redirect('/instructor')
 }
 
+export async function publicarCursoAction(cursoId: string): Promise<{ error: string | null }> {
+  const api = await apiServer()
+  try {
+    await api.cursos.publicar({ id: cursoId })
+  } catch (error) {
+    return { error: mensajeLegible(error) }
+  }
+  revalidatePath(`/instructor/cursos/${cursoId}`)
+  revalidatePath('/instructor')
+  return { error: null }
+}
+
+export async function archivarCursoAction(cursoId: string): Promise<{ error: string | null }> {
+  const api = await apiServer()
+  try {
+    await api.cursos.archivar({ id: cursoId })
+  } catch (error) {
+    return { error: mensajeLegible(error) }
+  }
+  revalidatePath(`/instructor/cursos/${cursoId}`)
+  revalidatePath('/instructor')
+  return { error: null }
+}
+
 export async function actualizarCursoAction(
   cursoId: string,
   _estadoPrevio: EstadoFormCurso,

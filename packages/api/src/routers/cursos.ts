@@ -133,6 +133,74 @@ export const cursosRouter = router({
       return { id: curso.id }
     }),
 
+  /**
+   * Publicar un curso propio (DRAFT o ARCHIVED → PUBLISHED).
+   * Validación del prompt maestro: debe tener al menos 1 lección con
+   * contenido listo — VIDEO con video procesado o PDF con archivo escaneado.
+   * (Las lecciones TEXT aún no cuentan: no tienen campo de contenido — ver ADR.)
+   */
+  publicar: instructorProcedure
+    .input(z.object({ id: z.string() }))
+    .output(z.object({ status: z.literal('PUBLISHED') }))
+    .mutation(async ({ ctx, input }) => {
+      const curso = await cursoPropio(ctx, input.id)
+      if (curso.status === 'PUBLISHED') {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'El curso ya está publicado.' })
+      }
+
+      const leccionesListas = await ctx.prisma.lesson.count({
+        where: {
+          section: { courseId: curso.id },
+          OR: [
+            { type: 'VIDEO', videoId: { not: null } },
+            { type: 'PDF', fileKey: { not: null } },
+          ],
+        },
+      })
+      if (leccionesListas === 0) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message:
+            'Para publicar, el curso necesita al menos una lección con contenido listo (video procesado o PDF cargado).',
+        })
+      }
+
+      await ctx.prisma.$transaction(async (tx) => {
+        await tx.course.update({ where: { id: curso.id }, data: { status: 'PUBLISHED' } })
+        await auditFromRequest(
+          ctx,
+          'PUBLISH_COURSE',
+          auditResource('Course', curso.id),
+          { desde: curso.status, leccionesListas },
+          tx,
+        )
+      })
+      return { status: 'PUBLISHED' as const }
+    }),
+
+  /** Archivar un curso propio — deja de ser visible para estudiantes. */
+  archivar: instructorProcedure
+    .input(z.object({ id: z.string() }))
+    .output(z.object({ status: z.literal('ARCHIVED') }))
+    .mutation(async ({ ctx, input }) => {
+      const curso = await cursoPropio(ctx, input.id)
+      if (curso.status === 'ARCHIVED') {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'El curso ya está archivado.' })
+      }
+
+      await ctx.prisma.$transaction(async (tx) => {
+        await tx.course.update({ where: { id: curso.id }, data: { status: 'ARCHIVED' } })
+        await auditFromRequest(
+          ctx,
+          'ARCHIVE_COURSE',
+          auditResource('Course', curso.id),
+          { desde: curso.status },
+          tx,
+        )
+      })
+      return { status: 'ARCHIVED' as const }
+    }),
+
   /** Actualizar título/descripcion/categoría de un curso propio. */
   actualizar: instructorProcedure
     .input(datosCurso.partial().extend({ id: z.string() }))

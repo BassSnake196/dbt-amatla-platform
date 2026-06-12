@@ -1,12 +1,12 @@
 # 📌 Estado del Proyecto: Plataforma E-Learning
-- **Última actualización:** 2026-06-12 (sesión 4) — Upload de video: mock de Cloudflare Stream (subida directa + webhook firmado) + worker que enlaza videoId/duración.
+- **Última actualización:** 2026-06-12 (sesión 4) — ✅ FASE 2 COMPLETA: vista previa de lección + publicar/archivar con validación.
 - **Fase Actual:** Fase 2 - Gestión de Cursos (Instructor)
 - **Objetivo del Sprint:** CRUD completo de cursos con uploads (Cloudflare mockeado hasta tener credenciales)
 
 ## 📋 Roadmap Global
 - [x] Fase 1: Infraestructura y Auth ✅ (2026-06-11)
-- [ ] Fase 2: Gestión de Cursos (siguiente)
-- [ ] Fase 3: Experiencia del Estudiante
+- [x] Fase 2: Gestión de Cursos ✅ (2026-06-12)
+- [ ] Fase 3: Experiencia del Estudiante (siguiente)
 
 ## 🎯 Tareas del Día (Daily Tasks)
 - [x] Inicializar monorepo con Turborepo
@@ -30,9 +30,10 @@
 - [x] CRUD de lecciones: VIDEO/PDF/TEXT con reordenamiento
 - [x] Upload de thumbnail/PDFs (presigned R2 mockeado + pipeline ClamAV)
 - [x] Upload de video (Cloudflare Stream mockeado + webhook)
-- [ ] Preview de lección + publicar/archivar con validación
+- [x] Preview de lección + publicar/archivar con validación
 
 ## 🧠 Memoria de Decisiones (ADRs)
+- **2026-06-12 — Publicar/archivar + vista previa (cierra Fase 2):** `cursos.publicar` exige ≥1 lección con contenido LISTO — VIDEO con `videoId` o PDF con `fileKey` enlazados por el worker (una lección VIDEO sin video procesado NO cuenta; TEXT tampoco hasta que exista el campo de contenido — decisión pendiente del ADR de lecciones). Transiciones: publicar desde DRAFT/ARCHIVED, archivar desde DRAFT/PUBLISHED; repetidas → BAD_REQUEST. Auditoría `PUBLISH_COURSE`/`ARCHIVE_COURSE` en transacción. `lecciones.preview` (instructor, ownership 3 niveles) firma URLs on-demand: `urlReproduccion` nuevo en la interfaz `StreamVideos` (TTL 30 min, regla #10; en Cloudflare real será el manifest HLS firmado — el mock sirve el archivo crudo via GET en `/api/stream-dev/[uid]`, sin soporte Range: suficiente para preview en dev). Página `/instructor/cursos/[id]/lecciones/[leccionId]/vista-previa` (server component, `<video>` nativo / `<iframe>` PDF / aviso para TEXT) — valida que `leccion.curso.id` coincida con la URL (404 en ruta cruzada). Botones publicar/archivar (`AccionesCurso`) en la estructura del curso; enlace de vista previa por fila de lección (nueva pestaña). Verificado e2e: curso sin contenido → BAD_REQUEST con mensaje; archivar→republicar OK; GET de video firmado 200 / firma falsa 403; páginas con cookie. 11 tests nuevos — **148 totales**.
 - **2026-06-12 — GOTCHA dnd-kit/hidratación:** `DndContext` sin prop `id` numera `aria-describedby` con un contador global (`DndDescribedBy-N`) que se desfasa entre SSR y cliente (el Strict Mode de dev duplica renders e incrementa el contador) → error de hidratación en consola. Fix: TODO `DndContext` debe llevar `id` determinista (`dnd-secciones-${cursoId}`, `dnd-lecciones-${seccionId}`). Aplicar también en futuros usos de dnd-kit.
 - **2026-06-12 — Mock de Cloudflare Stream (`stream.ts` en `@amatla/storage`):** replica "Direct Creator Uploads": interfaz `StreamVideos` (`crearSubidaDirecta` → uid hex-32 + uploadUrl de un solo uso firmada HMAC con TTL 30 min; `eliminar`) con implementación `StreamLocal` (videos en `<raíz>/.stream-dev`, gitignoreado). El "procesamiento" lo simula el endpoint dev: extrae la duración parseando ISO BMFF (caja `moov > mvhd`, ~60 líneas propias — MP4 y MOV comparten formato; sin FFmpeg) y dispara el webhook firmado **formato Cloudflare** (`Webhook-Signature: time=...,sig1=HMAC(secreto, time.cuerpo)`, ventana anti-replay 5 min) — así el handler del webhook es EL MISMO en dev y prod. Decisión: NO se genera thumbnail en el worker (el prompt lo pedía) porque Cloudflare Stream los sirve gratis por URL (`/thumbnails/thumbnail.jpg`) y Lesson no tiene campo thumbnail — no sobredimensionar. 9 tests.
 - **2026-06-12 — Router `videos` + modelo `VideoUpload`:** migración `20260612162525_add_video_upload` (uid único de Stream, `lessonId` SIN FK —el registro sobrevive a la lección, como FileUpload—, status PENDING|READY|ERROR, duration). `solicitarSubida` valida ext mp4/mov + coherencia ext↔MIME + ≤500MB + lección propia tipo VIDEO, crea registro + auditoría `UPLOAD_VIDEO` (acción nueva en el catálogo) en transacción. `estadoSubida` = polling solo del dueño. **No hay paso "confirmar"**: el webhook cierra el ciclo (igual que Cloudflare real). El enlace `Lesson.videoId + duration` lo hace SOLO el worker. En BD solo vive el uid — la URL firmada de reproducción se genera on-demand en Fase 3 (regla #10). 7 tests.

@@ -63,3 +63,35 @@ export async function PUT(req: NextRequest, { params }: Params) {
 
   return Response.json({ ok: true })
 }
+
+// Reproducción del mock: sirve el archivo crudo con URL firmada (en
+// producción esto es el manifest HLS de Cloudflare con token firmado).
+// Sin soporte de Range — suficiente para la vista previa en desarrollo.
+export async function GET(req: NextRequest, { params }: Params) {
+  if (process.env.NODE_ENV === 'production') return noDisponible()
+
+  const { uid } = await params
+  const q = req.nextUrl.searchParams
+  const exp = Number(q.get('exp'))
+  const firma = q.get('firma') ?? ''
+
+  if (!stream.verificarLectura(uid, { exp }, firma)) {
+    return Response.json({ error: 'Firma inválida o expirada' }, { status: 403 })
+  }
+
+  let datos: Buffer
+  try {
+    datos = await stream.leer(uid)
+  } catch {
+    return Response.json({ error: 'No encontrado' }, { status: 404 })
+  }
+
+  return new Response(new Uint8Array(datos), {
+    headers: {
+      'Content-Type': 'video/mp4',
+      'Content-Length': String(datos.length),
+      // URL firmada de corta vida — nunca cachear en intermediarios
+      'Cache-Control': 'private, max-age=0, no-store',
+    },
+  })
+}

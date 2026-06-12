@@ -75,6 +75,23 @@ describe('subida directa', () => {
     ).toBe(false)
   })
 
+  it('urlReproduccion firma con TTL ≤ 30 min y la verificación detecta alteraciones', async () => {
+    const { uid } = await stream.crearSubidaDirecta({ maxBytes: 1000 })
+    const lectura = await stream.urlReproduccion(uid)
+
+    // Regla #10: la URL de reproducción expira como máximo en 30 minutos
+    expect(lectura.expiraEn.getTime()).toBeLessThanOrEqual(Date.now() + 30 * 60 * 1000)
+
+    const url = new URL(lectura.url)
+    const exp = Number(url.searchParams.get('exp'))
+    const firma = url.searchParams.get('firma')!
+    expect(stream.verificarLectura(uid, { exp }, firma)).toBe(true)
+    expect(stream.verificarLectura(uid, { exp }, firma + '0')).toBe(false)
+    expect(stream.verificarLectura(uid, { exp }, firma, new Date((exp + 10) * 1000))).toBe(false)
+    // Una firma de lectura NO sirve para subir
+    expect(stream.verificarSubida(uid, { exp, max: 1000 }, firma)).toBe(false)
+  })
+
   it('guardar/leer/tamano/eliminar funcionan y rechazan uids inválidos', async () => {
     const { uid } = await stream.crearSubidaDirecta({ maxBytes: 1000 })
     await stream.guardar(uid, Buffer.from('video falso'))

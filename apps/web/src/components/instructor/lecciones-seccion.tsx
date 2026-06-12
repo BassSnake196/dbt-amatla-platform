@@ -18,7 +18,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { AlignLeft, Check, Eye, FileCheck2, FileText, GripVertical, MonitorPlay, Pencil, Plus, Trash2, Video, X } from 'lucide-react'
+import { AlignLeft, Check, Eye, FileCheck2, FileText, GripVertical, MonitorPlay, Pencil, Plus, SquareArrowOutUpRight, Trash2, Video, X } from 'lucide-react'
 import {
   crearLeccionAction,
   eliminarLeccionAction,
@@ -153,6 +153,7 @@ export function LeccionesSeccion({ cursoId, seccionId, lecciones: iniciales, onE
               {lecciones.map((leccion) => (
                 <LeccionFila
                   key={leccion.id}
+                  cursoId={cursoId}
                   leccion={leccion}
                   onRenombrar={renombrar}
                   onEliminar={eliminar}
@@ -195,10 +196,12 @@ export function LeccionesSeccion({ cursoId, seccionId, lecciones: iniciales, onE
 }
 
 function LeccionFila({
+  cursoId,
   leccion,
   onRenombrar,
   onEliminar,
 }: {
+  cursoId: string
   leccion: LeccionItem
   onRenombrar: (id: string, titulo: string) => void
   onEliminar: (id: string) => void
@@ -318,6 +321,16 @@ function LeccionFila({
               />
             </>
           )}
+          <a
+            href={`/instructor/cursos/${cursoId}/lecciones/${leccion.id}/vista-previa`}
+            target="_blank"
+            rel="noreferrer"
+            className="rounded p-1 text-neutral-900/40 hover:text-brand-secondary"
+            aria-label={`Vista previa de ${leccion.titulo}`}
+            title={`Vista previa de ${leccion.titulo}`}
+          >
+            <SquareArrowOutUpRight size={13} />
+          </a>
           <button
             type="button"
             onClick={() => setEditando(true)}
