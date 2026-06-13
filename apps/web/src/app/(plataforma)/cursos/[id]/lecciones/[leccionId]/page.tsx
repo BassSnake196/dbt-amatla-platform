@@ -4,6 +4,7 @@ import { apiServer } from '@/lib/api-server'
 import { formatearDuracion } from '@/lib/formato'
 import { ReproductorVideo } from '@/components/cursos/reproductor-video'
 import { VisorPdfCliente } from '@/components/cursos/visor-pdf-cliente'
+import { BotonMarcarTerminada } from '@/components/cursos/boton-marcar-terminada'
 
 export const metadata = { title: 'Lección — DBT.Amatla' }
 
@@ -74,6 +75,7 @@ export default async function LeccionPage({
           tipo={video.tipo}
           expiraEpochInicial={video.expiraEn.getTime()}
           posicionInicial={leccion.estado === 'COMPLETADA' ? 0 : leccion.ultimaPosicion}
+          maxVisto={leccion.maxVisto}
           notasIniciales={notas}
         />
       )}
@@ -108,11 +110,29 @@ export default async function LeccionPage({
         </div>
       )}
 
-      {(leccion.tipo === 'TEXT' || leccion.tipo === 'QUIZ') && (
+      {leccion.tipo === 'TEXT' && (
+        <div className="space-y-5">
+          <div className="flex min-h-48 items-center justify-center rounded-card bg-brand-surface p-10 text-center shadow-card">
+            <div className="text-neutral-900/60">
+              <NotebookText size={32} className="mx-auto text-brand-secondary" aria-hidden="true" />
+              <p className="mt-3 text-sm">
+                El contenido enriquecido de esta lección estará disponible muy pronto.
+              </p>
+            </div>
+          </div>
+          {/* Progreso secuencial: marcar la lección TEXT como terminada desbloquea la siguiente */}
+          <BotonMarcarTerminada
+            leccionId={leccion.id}
+            completada={leccion.estado === 'COMPLETADA'}
+          />
+        </div>
+      )}
+
+      {leccion.tipo === 'QUIZ' && (
         <div className="flex min-h-64 items-center justify-center rounded-card bg-brand-surface p-10 text-center shadow-card">
           <div className="text-neutral-900/60">
             <NotebookText size={32} className="mx-auto text-brand-secondary" aria-hidden="true" />
-            <p className="mt-3 text-sm">El contenido de esta lección estará disponible muy pronto.</p>
+            <p className="mt-3 text-sm">El examen de esta lección estará disponible muy pronto.</p>
           </div>
         </div>
       )}

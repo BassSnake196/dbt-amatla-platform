@@ -54,6 +54,9 @@ const leccionVista = z.object({
   duracion: z.number().int().nullable(), // null cuando está bloqueada
   estado: estadoLeccion,
   esPreview: z.boolean(),
+  // Progreso secuencial: false si está bloqueada por ModuleAccess O porque
+  // una lección anterior no está completada. La UI no la deja abrir.
+  navegable: z.boolean(),
 })
 
 const cursoVista = z.object({
@@ -112,6 +115,68 @@ function tituloBloqueado(titulo: string): string {
 }
 
 /**
+ * Progreso secuencial (regla MVP): sobre la secuencia de lecciones ACCESIBLES
+ * en orden de lectura, una lección es navegable si es preview, ya está
+ * completada, o es la PRIMERA no completada (la "frontera" = lección actual).
+ * Todo lo posterior a la frontera queda bloqueado hasta completar la actual.
+ */
+function idsNavegables(
+  secuenciaAccesible: { id: string; isPreview: boolean }[],
+  completadas: Set<string>,
+): Set<string> {
+  const navegables = new Set<string>()
+  let fronteraPasada = false
+  for (const lec of secuenciaAccesible) {
+    if (lec.isPreview || completadas.has(lec.id)) {
+      navegables.add(lec.id)
+      continue
+    }
+    if (!fronteraPasada) {
+      navegables.add(lec.id) // primera no completada = lección actual, desbloqueada
+      fronteraPasada = true
+    }
+    // las siguientes no completadas quedan bloqueadas (no se agregan)
+  }
+  return navegables
+}
+
+/**
+ * ¿La lección está bloqueada por el progreso secuencial? Carga las lecciones
+ * accesibles del curso en orden y verifica que la lección objetivo sea
+ * navegable. Las preview nunca se bloquean.
+ */
+async function bloqueadaPorSecuencia(
+  ctx: Context & { user: SessionUser },
+  leccion: { id: string; isPreview: boolean; section: { courseId: string } },
+  inscripcionId: string,
+  accesoTotal: boolean,
+  idsAccesibles: Set<string>,
+): Promise<boolean> {
+  if (leccion.isPreview) return false
+
+  const secciones = await ctx.prisma.section.findMany({
+    where: { courseId: leccion.section.courseId },
+    orderBy: { order: 'asc' },
+    select: { id: true, lessons: { orderBy: { order: 'asc' }, select: { id: true, isPreview: true } } },
+  })
+  const secuencia = secciones.flatMap((s) => {
+    const accesible = accesoTotal || idsAccesibles.has(s.id)
+    return s.lessons.filter((l) => accesible || l.isPreview)
+  })
+
+  const completadas = new Set(
+    (
+      await ctx.prisma.progress.findMany({
+        where: { enrollmentId: inscripcionId, completedAt: { not: null } },
+        select: { lessonId: true },
+      })
+    ).map((p) => p.lessonId),
+  )
+
+  return !idsNavegables(secuencia, completadas).has(leccion.id)
+}
+
+/**
  * Lección a la que el estudiante de la sesión SÍ tiene acceso:
  * curso publicado + Enrollment + (sección accesible por ModuleAccess o
  * lección isPreview). Cualquier otro caso → NOT_FOUND idéntico al de
@@ -132,6 +197,13 @@ async function leccionAccesible(ctx: Context & { user: SessionUser }, leccionId:
   if (!accesible) {
     throw new TRPCError({ code: 'NOT_FOUND', message: 'Lección no encontrada.' })
   }
+
+  // Progreso secuencial: no se puede abrir una lección si la anterior no está
+  // completada (mismo NOT_FOUND que una lección sin acceso — no se distingue).
+  if (await bloqueadaPorSecuencia(ctx, leccion, inscripcion.id, accesoTotal, idsAccesibles)) {
+    throw new TRPCError({ code: 'NOT_FOUND', message: 'Lección no encontrada.' })
+  }
+
   return { leccion, inscripcion }
 }
 
@@ -349,6 +421,15 @@ export const estudianteRouter = router({
       )
       const tocadas = new Set(progresoFilas.map((p) => p.lessonId))
 
+      // Navegabilidad por progreso secuencial sobre las lecciones accesibles en orden
+      const secuenciaAccesible = curso.sections.flatMap((seccion) => {
+        const accesible = accesoTotal || idsAccesibles.has(seccion.id)
+        return seccion.lessons
+          .filter((l) => accesible || l.isPreview)
+          .map((l) => ({ id: l.id, isPreview: l.isPreview }))
+      })
+      const navegables = idsNavegables(secuenciaAccesible, completadas)
+
       const secciones = curso.sections.map((seccion) => {
         const accesible = accesoTotal || idsAccesibles.has(seccion.id)
         return {
@@ -366,6 +447,7 @@ export const estudianteRouter = router({
                 duracion: null,
                 estado: 'BLOQUEADA' as const,
                 esPreview: false,
+                navegable: false,
               }
             }
             return {
@@ -379,6 +461,8 @@ export const estudianteRouter = router({
                   ? ('EN_PROGRESO' as const)
                   : ('PENDIENTE' as const),
               esPreview: leccion.isPreview,
+              // bloqueada por secuencia: visible y con título, pero no abrible
+              navegable: navegables.has(leccion.id),
             }
           }),
         }
@@ -421,6 +505,8 @@ export const estudianteRouter = router({
         tieneVideo: z.boolean(), // VIDEO con video ya procesado por el worker
         tieneArchivo: z.boolean(), // PDF con archivo escaneado y enlazado
         ultimaPosicion: z.number().int(), // segundos — para reanudar reproducción
+        // posición máxima vista — el reproductor limita el avance a este valor
+        maxVisto: z.number().int(),
         curso: z.object({ id: z.string(), titulo: z.string() }),
         seccionTitulo: z.string(),
       }),
@@ -430,7 +516,7 @@ export const estudianteRouter = router({
 
       const progreso = await ctx.prisma.progress.findUnique({
         where: { enrollmentId_lessonId: { enrollmentId: inscripcion.id, lessonId: leccion.id } },
-        select: { completedAt: true, lastPosition: true },
+        select: { completedAt: true, lastPosition: true, watchedSeconds: true },
       })
       const curso = await ctx.prisma.course.findUniqueOrThrow({
         where: { id: leccion.section.courseId },
@@ -450,6 +536,8 @@ export const estudianteRouter = router({
         tieneVideo: leccion.videoId !== null,
         tieneArchivo: leccion.fileKey !== null,
         ultimaPosicion: progreso?.lastPosition ?? 0,
+        // si ya está completada, no se limita el avance (repaso libre)
+        maxVisto: progreso?.completedAt ? (leccion.duration ?? Number.MAX_SAFE_INTEGER) : (progreso?.watchedSeconds ?? 0),
         curso: { id: curso.id, titulo: curso.title },
         seccionTitulo: leccion.section.title,
       }
@@ -538,6 +626,38 @@ export const estudianteRouter = router({
           lessonId: leccion.id,
           completedAt: new Date(),
         },
+        update: { completedAt: new Date() },
+      })
+      return { completadaAhora: true }
+    }),
+
+  /**
+   * Marcar una lección TEXT como terminada (botón del estudiante). Necesario
+   * para el progreso secuencial: sin esto, una lección TEXT bloquearía las
+   * siguientes. Pegajoso e idempotente.
+   */
+  marcarTextoVisto: protectedProcedure
+    .input(z.object({ leccionId: z.string() }))
+    .output(z.object({ completadaAhora: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      const { leccion, inscripcion } = await leccionAccesible(ctx, input.leccionId)
+      if (leccion.type !== 'TEXT') {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Lección no encontrada.' })
+      }
+
+      const previo = await ctx.prisma.progress.findUnique({
+        where: {
+          enrollmentId_lessonId: { enrollmentId: inscripcion.id, lessonId: leccion.id },
+        },
+        select: { completedAt: true },
+      })
+      if (previo?.completedAt) return { completadaAhora: false }
+
+      await ctx.prisma.progress.upsert({
+        where: {
+          enrollmentId_lessonId: { enrollmentId: inscripcion.id, lessonId: leccion.id },
+        },
+        create: { enrollmentId: inscripcion.id, lessonId: leccion.id, completedAt: new Date() },
         update: { completedAt: new Date() },
       })
       return { completadaAhora: true }

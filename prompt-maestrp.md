@@ -493,7 +493,7 @@ GESTIÓN POR EL INSTRUCTOR:
 ### FASE 4 — Administración + Asignación + MVP completo (EN CURSO)
 - [x] **Asignación de curso completo:** instructor/admin asigna un curso a un estudiante
       (UI en `/instructor/cursos/[id]/estudiantes` — mockup acordado con el usuario) ✅ 2026-06-13
-- [ ] **Progreso secuencial de lecciones:**
+- [x] **Progreso secuencial de lecciones:** ✅ 2026-06-13
       - Lección N+1 bloqueada si la N no está completada
       - El reproductor de video limita el scrubbing hacia adelante a watchedSeconds
       - Botón "Marcar como terminada" para lecciones TEXT

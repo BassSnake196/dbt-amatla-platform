@@ -112,6 +112,18 @@ async function restringirASeccion1() {
   })
 }
 
+// Marca lecciones como completadas (para desbloquear las siguientes en la
+// secuencia — el progreso secuencial bloquea la lección N+1 hasta la N).
+async function completar(...lessonIds: string[]) {
+  for (const lessonId of lessonIds) {
+    await prisma.progress.upsert({
+      where: { enrollmentId_lessonId: { enrollmentId: inscripcionId, lessonId } },
+      create: { enrollmentId: inscripcionId, lessonId, completedAt: new Date() },
+      update: { completedAt: new Date() },
+    })
+  }
+}
+
 const UID_VIDEO = '11112222333344445555666677778888'
 let directorioStream: string
 
@@ -431,6 +443,7 @@ describe('estudiante.videoLeccion — URL firmada on-demand', () => {
   })
 
   it('VIDEO sin procesar, lección PDF y sección bloqueada: NOT_FOUND', async () => {
+    await completar(leccion1Id, leccion2Id, leccion3Id) // que el NOT_FOUND sea por el motivo correcto, no por secuencia
     // leccion2 es VIDEO pero sin videoId (el worker aún no la enlaza)
     await expect(
       callerComo(ESTUDIANTE).estudiante.videoLeccion({ id: leccion2Id }),
@@ -449,6 +462,7 @@ describe('estudiante.videoLeccion — URL firmada on-demand', () => {
 
 describe('estudiante.pdfLeccion — URL firmada y permiso de descarga', () => {
   it('PDF accesible: URL firmada con TTL ≤ 30 min; el instructor controla la descarga', async () => {
+    await completar(leccion1Id, leccion2Id, leccion3Id) // desbloquear la 4ª (secuencial)
     const r = await callerComo(ESTUDIANTE).estudiante.pdfLeccion({ id: leccion4Id })
     expect(r.url).toContain('/api/almacen-dev/lecciones/material-cuatro.pdf')
     expect(r.url).toContain('firma=')
@@ -466,6 +480,7 @@ describe('estudiante.pdfLeccion — URL firmada y permiso de descarga', () => {
   })
 
   it('PDF sin archivo, lección VIDEO y sección bloqueada: NOT_FOUND', async () => {
+    await completar(leccion1Id, leccion2Id, leccion3Id) // desbloquear secuencialmente
     await prisma.lesson.update({ where: { id: leccion4Id }, data: { fileKey: null } })
     try {
       await expect(
@@ -490,6 +505,7 @@ describe('estudiante.pdfLeccion — URL firmada y permiso de descarga', () => {
 
 describe('estudiante.materialVisto — abrir el PDF completa la lección', () => {
   it('completa al primer visto y es idempotente', async () => {
+    await completar(leccion1Id, leccion2Id, leccion3Id) // desbloquear la 4ª (secuencial)
     const caller = callerComo(ESTUDIANTE)
     let r = await caller.estudiante.materialVisto({ leccionId: leccion4Id })
     expect(r.completadaAhora).toBe(true)
@@ -656,5 +672,92 @@ describe('estudiante — notas personales cifradas', () => {
     await expect(
       callerComo(OTRA_ESTUDIANTE).estudiante.notasLeccion({ leccionId: leccion1Id }),
     ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+  })
+})
+
+describe('estudiante — progreso secuencial', () => {
+  it('la 1ª lección es accesible; la 2ª está bloqueada hasta completar la 1ª', async () => {
+    // Sin progreso: leccion1 (primera) accesible, leccion2 bloqueada
+    await callerComo(ESTUDIANTE).estudiante.leccion({ id: leccion1Id }) // no lanza
+    await expect(
+      callerComo(ESTUDIANTE).estudiante.leccion({ id: leccion2Id }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+
+    // Al completar la 1ª, la 2ª se desbloquea
+    await completar(leccion1Id)
+    const r = await callerComo(ESTUDIANTE).estudiante.leccion({ id: leccion2Id })
+    expect(r.id).toBe(leccion2Id)
+    // ...pero la 3ª sigue bloqueada (la 2ª no está completada)
+    await expect(
+      callerComo(ESTUDIANTE).estudiante.leccion({ id: leccion3Id }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+  })
+
+  it('la vista de curso marca navegable según la frontera de progreso', async () => {
+    let r = await callerComo(ESTUDIANTE).estudiante.curso({ id: cursoAsignadoId })
+    let nav = new Map(r.secciones.flatMap((s) => s.lecciones).map((l) => [l.id, l.navegable]))
+    expect(nav.get(leccion1Id)).toBe(true) // frontera inicial
+    expect(nav.get(leccion2Id)).toBe(false)
+    expect(nav.get(leccion4Id)).toBe(false)
+
+    await completar(leccion1Id, leccion2Id)
+    r = await callerComo(ESTUDIANTE).estudiante.curso({ id: cursoAsignadoId })
+    nav = new Map(r.secciones.flatMap((s) => s.lecciones).map((l) => [l.id, l.navegable]))
+    expect(nav.get(leccion1Id)).toBe(true) // completada → sigue navegable (repaso)
+    expect(nav.get(leccion2Id)).toBe(true)
+    expect(nav.get(leccion3Id)).toBe(true) // nueva frontera
+    expect(nav.get(leccion4Id)).toBe(false) // aún bloqueada
+  })
+
+  it('una lección isPreview se salta el bloqueo secuencial', async () => {
+    // leccion4 (última) como preview: navegable y accesible sin completar nada
+    await prisma.lesson.update({ where: { id: leccion4Id }, data: { isPreview: true } })
+    try {
+      const r = await callerComo(ESTUDIANTE).estudiante.leccion({ id: leccion4Id })
+      expect(r.id).toBe(leccion4Id)
+      const vista = await callerComo(ESTUDIANTE).estudiante.curso({ id: cursoAsignadoId })
+      const l4 = vista.secciones.flatMap((s) => s.lecciones).find((l) => l.id === leccion4Id)!
+      expect(l4.navegable).toBe(true)
+    } finally {
+      await prisma.lesson.update({ where: { id: leccion4Id }, data: { isPreview: false } })
+    }
+  })
+
+  it('marcarTextoVisto completa una lección TEXT (y respeta la secuencia)', async () => {
+    // leccion2 como TEXT temporalmente
+    await prisma.lesson.update({ where: { id: leccion2Id }, data: { type: 'TEXT' } })
+    try {
+      // Bloqueada hasta completar la 1ª
+      await expect(
+        callerComo(ESTUDIANTE).estudiante.marcarTextoVisto({ leccionId: leccion2Id }),
+      ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+
+      await completar(leccion1Id)
+      const r = await callerComo(ESTUDIANTE).estudiante.marcarTextoVisto({ leccionId: leccion2Id })
+      expect(r.completadaAhora).toBe(true)
+      // idempotente
+      expect(
+        (await callerComo(ESTUDIANTE).estudiante.marcarTextoVisto({ leccionId: leccion2Id }))
+          .completadaAhora,
+      ).toBe(false)
+
+      // un VIDEO no se completa por esta vía
+      await completar(leccion2Id)
+      await expect(
+        callerComo(ESTUDIANTE).estudiante.marcarTextoVisto({ leccionId: leccion3Id }),
+      ).rejects.toMatchObject({ code: 'NOT_FOUND' }) // leccion3 es VIDEO
+    } finally {
+      await prisma.lesson.update({ where: { id: leccion2Id }, data: { type: 'VIDEO' } })
+    }
+  })
+
+  it('el reproductor recibe maxVisto = watchedSeconds (libre si ya completada)', async () => {
+    await callerComo(ESTUDIANTE).estudiante.progresoVideo({ leccionId: leccion1Id, posicionSegundos: 500 })
+    let r = await callerComo(ESTUDIANTE).estudiante.leccion({ id: leccion1Id })
+    expect(r.maxVisto).toBe(500) // límite de avance = lo ya visto
+
+    await completar(leccion1Id)
+    r = await callerComo(ESTUDIANTE).estudiante.leccion({ id: leccion1Id })
+    expect(r.maxVisto).toBe(1800) // completada → avance libre hasta la duración
   })
 })

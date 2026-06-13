@@ -1,6 +1,6 @@
 # 📌 Estado del Proyecto: Plataforma E-Learning
-- **Última actualización:** 2026-06-13 (sesión 6) — Fase 4 tarea 4.1 (asignación de curso completo) COMPLETA. 185 tests.
-- **Fase Actual:** Fase 4 (MVP completo) — 4.1 ✅; siguiente: 4.2 (progreso secuencial)
+- **Última actualización:** 2026-06-13 (sesión 6) — Fase 4: 4.1 (asignación) + 4.2/4.3 (progreso secuencial + botón TEXT) COMPLETAS. 190 tests.
+- **Fase Actual:** Fase 4 (MVP completo) — 4.1/4.2/4.3 ✅; siguiente: 4.4 (editor TEXT Tiptap)
 - **Objetivo del Sprint:** Cerrar el MVP: asignación, progreso secuencial, quiz, editor TEXT, panel admin, progreso por estudiante (certificado/email/granular/móvil DIFERIDOS)
 
 ## 📋 Roadmap Global (v3.0 — MVP sin chatbot IA)
@@ -28,8 +28,8 @@
 - [ ] **4.0** Migración schema: modelos QuizQuestion + QuizAttempt + campo passingScore en Lesson
       (verificar si ya existen antes de crear; si no, migrar primero)
 - [x] **4.1** Asignación de curso completo: UI + router ✅ (2026-06-13 — desbloquea la demo e2e)
-- [ ] **4.2** Progreso secuencial: bloqueo server-side de lección N+1 + límite scrubbing video
-- [ ] **4.3** Botón "Marcar como terminada" para lecciones TEXT
+- [x] **4.2** Progreso secuencial: bloqueo server-side de lección N+1 + límite scrubbing video ✅ (2026-06-13)
+- [x] **4.3** Botón "Marcar como terminada" para lecciones TEXT ✅ (2026-06-13)
 - [ ] **4.4** Editor de contenido TEXT con Tiptap (instructor) + vista renderizada (estudiante)
 - [ ] **4.5** Quiz backend: router quiz, procedures CRUD preguntas + enviar intento
 - [ ] **4.6** Quiz UI instructor: gestión de preguntas + passingScore
@@ -72,6 +72,35 @@
 - [x] Preview de lección + publicar/archivar con validación
 
 ## 🧠 Memoria de Decisiones (ADRs)
+
+### ADR — 2026-06-13 — Progreso secuencial (Fase 4, tareas 4.2 + 4.3)
+Regla MVP: no se puede abrir la lección N+1 sin completar la N (salvo `isPreview`).
+**Server-side (fuente de verdad):** helper `idsNavegables(secuencia, completadas)`
+en `estudiante.ts` — sobre las lecciones ACCESIBLES en orden, navegable = preview
+|| completada || es la PRIMERA no completada (la "frontera"); todo lo posterior se
+bloquea. `bloqueadaPorSecuencia()` aplica esto en `leccionAccesible` → **todos los
+procedures de contenido** (leccion, videoLeccion, pdfLeccion, progresoVideo,
+materialVisto, marcarTextoVisto, notas) devuelven NOT_FOUND si la lección está
+bloqueada por secuencia (mismo trato que sin acceso ModuleAccess — no se distingue).
+**Vista (`estudiante.curso`):** nuevo campo `navegable` por lección (false = sin
+acceso ModuleAccess O bloqueo secuencial). Diferencia clave en UI: el bloqueo
+secuencial muestra el título COMPLETO (el estudiante ve qué viene) con candado y no
+abrible; el bloqueo por ModuleAccess sigue enmascarando el título. `IndiceCurso` usa
+`navegable` (Link vs div + ícono Lock). **Límite de scrubbing del video:**
+`estudiante.leccion` expone `maxVisto` (= `watchedSeconds`, o duración si ya
+COMPLETADA = avance libre en repaso); `ReproductorVideo` lo aplica con
+`onTimeUpdate`/`onSeeking`/`onSeeked` (el límite crece con la reproducción normal;
+un salto adelante > maxVisto+1.5s se revierte; rebobinar es libre). **Lecciones
+TEXT completables:** procedure `marcarTextoVisto` (pegajoso) + componente
+`BotonMarcarTerminada` — NECESARIO porque sin él una lección TEXT trabaría la
+secuencia (el editor de contenido real es 4.4). **GOTCHA conocido (no resuelto, es
+de configuración):** una lección VIDEO publicada SIN video procesado no se puede
+completar (progresoVideo da NOT_FOUND) → trabaría la secuencia; el instructor debe
+completar el contenido antes de publicar. Verificado e2e (curso-dev-2): sin
+progreso solo la 1ª navegable; abrir la 2ª → NOT_FOUND/404; completar la 1ª
+desbloquea la 2ª (la 3ª sigue bloqueada). 5 tests nuevos — **190 totales**. Los
+tests existentes que abrían lecciones intermedias ahora completan las previas con
+el helper `completar()`.
 
 ### ADR — 2026-06-13 — Asignación de curso completo (Fase 4, tarea 4.1)
 Router nuevo `inscripciones` (`packages/api/src/routers/inscripciones.ts`),

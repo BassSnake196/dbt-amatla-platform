@@ -67,8 +67,11 @@ interface ReproductorVideoProps {
   tipo: 'video/mp4'
   expiraEpochInicial: number
   posicionInicial: number // segundos — para reanudar donde se quedó
+  maxVisto: number // progreso secuencial: no se puede avanzar más allá de lo ya visto
   notasIniciales: NotaVideo[]
 }
+
+const MARGEN_SEEK = 1.5 // tolerancia en segundos para el límite de avance
 
 export function ReproductorVideo({
   leccionId,
@@ -77,6 +80,7 @@ export function ReproductorVideo({
   tipo,
   expiraEpochInicial,
   posicionInicial,
+  maxVisto,
   notasIniciales,
 }: ReproductorVideoProps) {
   const router = useRouter()
@@ -87,6 +91,10 @@ export function ReproductorVideo({
   const posicionPendienteRef = useRef<number | null>(posicionInicial > 0 ? posicionInicial : null)
   const ultimaGuardadaRef = useRef(-1)
   const guardandoRef = useRef(false)
+  // Límite de avance (progreso secuencial): crece con la reproducción normal;
+  // un salto hacia adelante más allá de lo visto se revierte. Rebobinar es libre.
+  const maxScrubableRef = useRef(maxVisto)
+  const seekingRef = useRef(false)
 
   async function guardarPosicion() {
     const player = playerRef.current
@@ -157,6 +165,24 @@ export function ReproductorVideo({
           }}
           onPause={() => void guardarPosicion()}
           onEnded={() => void guardarPosicion()}
+          onTimeUpdate={() => {
+            // Durante reproducción normal el límite de avance crece con lo visto
+            const p = playerRef.current
+            if (p && !seekingRef.current && p.currentTime > maxScrubableRef.current) {
+              maxScrubableRef.current = p.currentTime
+            }
+          }}
+          onSeeking={() => {
+            seekingRef.current = true
+          }}
+          onSeeked={() => {
+            seekingRef.current = false
+            const p = playerRef.current
+            // Salto hacia adelante más allá de lo visto → se revierte (rebobinar es libre)
+            if (p && p.currentTime > maxScrubableRef.current + MARGEN_SEEK) {
+              p.currentTime = maxScrubableRef.current
+            }
+          }}
           className="aspect-video w-full"
         >
           <MediaProvider />

@@ -11,17 +11,15 @@ import { formatearDuracion } from '@/lib/formato'
 // Las lecciones 🔒 llegan del server ya enmascaradas (título recortado, sin
 // duración) y NO son navegables — el candado real lo pone el resolver.
 
-function IconoEstado({ estado }: { estado: LeccionIndice['estado'] }) {
-  switch (estado) {
-    case 'COMPLETADA':
-      return <CheckCircle2 size={16} className="shrink-0 text-brand-secondary" aria-hidden="true" />
-    case 'EN_PROGRESO':
-      return <PlayCircle size={16} className="shrink-0 text-brand-primary" aria-hidden="true" />
-    case 'BLOQUEADA':
-      return <Lock size={14} className="shrink-0 text-neutral-900/35" aria-hidden="true" />
-    default:
-      return <Circle size={16} className="shrink-0 text-neutral-900/25" aria-hidden="true" />
-  }
+function IconoEstado({ estado, navegable }: { estado: LeccionIndice['estado']; navegable: boolean }) {
+  if (estado === 'COMPLETADA')
+    return <CheckCircle2 size={16} className="shrink-0 text-brand-secondary" aria-hidden="true" />
+  if (estado === 'EN_PROGRESO')
+    return <PlayCircle size={16} className="shrink-0 text-brand-primary" aria-hidden="true" />
+  // No navegable: sin acceso (ModuleAccess) o bloqueada por progreso secuencial
+  if (!navegable)
+    return <Lock size={14} className="shrink-0 text-neutral-900/35" aria-hidden="true" />
+  return <Circle size={16} className="shrink-0 text-neutral-900/25" aria-hidden="true" />
 }
 
 const ETIQUETA_ESTADO: Record<LeccionIndice['estado'], string> = {
@@ -86,14 +84,19 @@ export function IndiceCurso({
                   {seccion.lecciones.map((leccion) => {
                     const href = `/cursos/${cursoId}/lecciones/${leccion.id}`
                     const activa = pathname === href
-                    const bloqueada = leccion.estado === 'BLOQUEADA'
+                    const sinAcceso = leccion.estado === 'BLOQUEADA' // ModuleAccess: título enmascarado
+                    const bloqueada = !leccion.navegable // sin acceso O bloqueo secuencial → no abrible
 
                     const contenido = (
                       <>
-                        <IconoEstado estado={leccion.estado} />
+                        <IconoEstado estado={leccion.estado} navegable={leccion.navegable} />
                         <span
                           className={`min-w-0 flex-1 truncate text-sm ${
-                            bloqueada ? 'italic text-neutral-900/40' : 'text-neutral-900/80'
+                            sinAcceso
+                              ? 'italic text-neutral-900/40'
+                              : bloqueada
+                                ? 'text-neutral-900/45'
+                                : 'text-neutral-900/80'
                           }`}
                         >
                           {leccion.titulo}
