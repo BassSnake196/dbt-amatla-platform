@@ -668,6 +668,43 @@ export const estudianteRouter = router({
     }),
 
   /**
+   * Marcar manualmente una lección como terminada (botón "Finalizar lección").
+   * Permite avanzar en el curso sin depender del 80% del video o de abrir el PDF.
+   * Aplica a VIDEO/PDF/TEXT; el QUIZ NO se marca así (se completa aprobándolo,
+   * para no saltarse el score). Pegajoso e idempotente; respeta acceso +
+   * progreso secuencial (leccionAccesible → NOT_FOUND si está bloqueada).
+   */
+  completarLeccion: protectedProcedure
+    .input(z.object({ leccionId: z.string() }))
+    .output(z.object({ completadaAhora: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      const { leccion, inscripcion } = await leccionAccesible(ctx, input.leccionId)
+      if (leccion.type === 'QUIZ') {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'El quiz se completa aprobándolo, no manualmente.',
+        })
+      }
+
+      const previo = await ctx.prisma.progress.findUnique({
+        where: {
+          enrollmentId_lessonId: { enrollmentId: inscripcion.id, lessonId: leccion.id },
+        },
+        select: { completedAt: true },
+      })
+      if (previo?.completedAt) return { completadaAhora: false }
+
+      await ctx.prisma.progress.upsert({
+        where: {
+          enrollmentId_lessonId: { enrollmentId: inscripcion.id, lessonId: leccion.id },
+        },
+        create: { enrollmentId: inscripcion.id, lessonId: leccion.id, completedAt: new Date() },
+        update: { completedAt: new Date() },
+      })
+      return { completadaAhora: true }
+    }),
+
+  /**
    * Guardar posición de reproducción (el cliente la manda cada ~15 s).
    * La completitud al 80% se decide AQUÍ con la duración de BD — nunca se
    * confía en lo que declare el cliente — y es pegajosa (no se des-completa).

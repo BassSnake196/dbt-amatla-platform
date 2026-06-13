@@ -1,20 +1,24 @@
 'use client'
 
-// Botón para que el estudiante marque una lección TEXT como terminada.
-// Necesario para el progreso secuencial: completar la lección desbloquea la
-// siguiente. Al completar, refresca para actualizar el índice y la frontera.
+// Botón para que el estudiante marque una lección como terminada y pueda
+// avanzar (progreso secuencial: completar desbloquea la siguiente). Se usa en
+// lecciones TEXT, VIDEO y PDF; el QUIZ se completa aprobándolo. Al completar,
+// refresca para actualizar el índice y la frontera de navegación.
 
 import { useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { CheckCircle2, Loader2 } from 'lucide-react'
-import { marcarTextoVistoAction } from '@/acciones/estudiante'
+import { completarLeccionAction } from '@/acciones/estudiante'
 
 export function BotonMarcarTerminada({
   leccionId,
   completada,
+  etiqueta = 'Marcar como terminada',
 }: {
   leccionId: string
   completada: boolean
+  /** Texto del botón — p. ej. "Finalizar lección" en video/PDF. */
+  etiqueta?: string
 }) {
   const router = useRouter()
   const [pendiente, startTransition] = useTransition()
@@ -29,7 +33,7 @@ export function BotonMarcarTerminada({
 
   function marcar() {
     startTransition(async () => {
-      const r = await marcarTextoVistoAction(leccionId)
+      const r = await completarLeccionAction(leccionId)
       if (!r.error) router.refresh()
     })
   }
@@ -46,7 +50,7 @@ export function BotonMarcarTerminada({
       ) : (
         <CheckCircle2 size={16} aria-hidden="true" />
       )}
-      Marcar como terminada
+      {etiqueta}
     </button>
   )
 }

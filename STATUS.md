@@ -72,6 +72,21 @@
 
 ## 🧠 Memoria de Decisiones (ADRs)
 
+### ADR — 2026-06-13 — Botón "Finalizar lección" manual para VIDEO/PDF
+**Pedido del usuario:** poder avanzar en el curso marcando la lección como terminada,
+sin depender solo del auto-completado. **Backend:** nuevo procedure
+`estudiante.completarLeccion({ leccionId })` (genérico, pegajoso, idempotente; respeta
+acceso + progreso secuencial vía `leccionAccesible`; **rechaza QUIZ** con BAD_REQUEST —
+el quiz se completa aprobándolo, no manualmente). **Frontend:** `BotonMarcarTerminada`
+generalizado (ahora usa `completarLeccionAction` + prop `etiqueta`); se usa en TEXT
+("Marcar como terminada"), VIDEO ("Finalizar lección", bajo el reproductor, además del
+auto-completado al 80%) y PDF. **PDF — cambio de UX:** antes la lección PDF se completaba
+automáticamente al ABRIR el visor; ahora el botón "Finalizar lección" aparece SOLO al
+llegar a la ÚLTIMA página (`pagina === totalPaginas`) y el estudiante lo pulsa. Se quitó
+el auto-completado en `onLoadSuccess` del visor. **Verificado:** 3 tests nuevos de
+`completarLeccion` (VIDEO idempotente + desbloqueo secuencial, NOT_FOUND por secuencia/
+ownership, QUIZ rechazado) — **109 tests API** + type-check web en verde.
+
 ### ADR — 2026-06-13 — Rendimiento percibido (requisito permanente)
 **Requisito del usuario:** la app debe sentirse rápida; los cambios de pantalla NO deben
 congelarse y toda espera lleva animación de carga. Aplica a TODAS las tareas en adelante.

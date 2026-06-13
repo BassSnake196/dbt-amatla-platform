@@ -13,10 +13,9 @@
 import '@/lib/polyfill-promise-withresolvers'
 
 import { useEffect, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronRight, Download, Loader2 } from 'lucide-react'
 import { Document, Page, pdfjs } from 'react-pdf'
-import { marcarMaterialVistoAction } from '@/acciones/estudiante'
+import { BotonMarcarTerminada } from './boton-marcar-terminada'
 
 // El worker de pdf.js se sirve desde /public (copiado de pdfjs-dist en su
 // versión EXACTA). Evita el frágil `new URL(..., import.meta.url)` que no
@@ -28,16 +27,16 @@ export interface VisorPdfProps {
   leccionId: string
   url: string
   permitirDescarga: boolean
+  /** Si la lección ya está completada (para el botón de finalizar). */
+  completada: boolean
 }
 
-export default function VisorPdf({ leccionId, url, permitirDescarga }: VisorPdfProps) {
-  const router = useRouter()
+export default function VisorPdf({ leccionId, url, permitirDescarga, completada }: VisorPdfProps) {
   const [totalPaginas, setTotalPaginas] = useState<number | null>(null)
   const [pagina, setPagina] = useState(1)
   const [fallo, setFallo] = useState(false)
   const contenedorRef = useRef<HTMLDivElement>(null)
   const [ancho, setAncho] = useState<number>()
-  const vistoRef = useRef(false)
 
   // Ancho responsive: la página del PDF llena el contenedor
   useEffect(() => {
@@ -50,14 +49,11 @@ export default function VisorPdf({ leccionId, url, permitirDescarga }: VisorPdfP
     return () => observador.disconnect()
   }, [])
 
-  async function alCargarDocumento({ numPages }: { numPages: number }) {
+  // Antes abrir el PDF completaba la lección automáticamente; ahora la
+  // completitud es explícita: el botón "Finalizar lección" aparece al llegar a
+  // la última página (ver más abajo).
+  function alCargarDocumento({ numPages }: { numPages: number }) {
     setTotalPaginas(numPages)
-    // Abrir el material = lección vista (una sola vez por montaje)
-    if (!vistoRef.current) {
-      vistoRef.current = true
-      const r = await marcarMaterialVistoAction(leccionId)
-      if (r.completadaAhora) router.refresh()
-    }
   }
 
   if (fallo) {
@@ -71,7 +67,8 @@ export default function VisorPdf({ leccionId, url, permitirDescarga }: VisorPdfP
   }
 
   return (
-    <div className="overflow-hidden rounded-card bg-white shadow-card">
+    <div className="space-y-4">
+      <div className="overflow-hidden rounded-card bg-white shadow-card">
       <div ref={contenedorRef}>
         <Document
           file={url}
@@ -128,6 +125,19 @@ export default function VisorPdf({ leccionId, url, permitirDescarga }: VisorPdfP
               Descargar
             </a>
           )}
+        </div>
+      )}
+      </div>
+
+      {/* "Finalizar lección" solo al llegar a la última página: el botón
+          aparece al final de la presentación (regla de UX acordada). */}
+      {totalPaginas !== null && pagina === totalPaginas && (
+        <div className="flex justify-center">
+          <BotonMarcarTerminada
+            leccionId={leccionId}
+            completada={completada}
+            etiqueta="Finalizar lección"
+          />
         </div>
       )}
     </div>

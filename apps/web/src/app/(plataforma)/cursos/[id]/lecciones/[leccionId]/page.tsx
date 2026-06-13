@@ -68,16 +68,25 @@ export default async function LeccionPage({
       </header>
 
       {leccion.tipo === 'VIDEO' && video && (
-        <ReproductorVideo
-          leccionId={leccion.id}
-          titulo={leccion.titulo}
-          urlInicial={video.url}
-          tipo={video.tipo}
-          expiraEpochInicial={video.expiraEn.getTime()}
-          posicionInicial={leccion.estado === 'COMPLETADA' ? 0 : leccion.ultimaPosicion}
-          maxVisto={leccion.maxVisto}
-          notasIniciales={notas}
-        />
+        <>
+          <ReproductorVideo
+            leccionId={leccion.id}
+            titulo={leccion.titulo}
+            urlInicial={video.url}
+            tipo={video.tipo}
+            expiraEpochInicial={video.expiraEn.getTime()}
+            posicionInicial={leccion.estado === 'COMPLETADA' ? 0 : leccion.ultimaPosicion}
+            maxVisto={leccion.maxVisto}
+            notasIniciales={notas}
+          />
+          {/* El video también se completa solo al 80%; este botón deja avanzar
+              manualmente cuando el estudiante termina o decide finalizar. */}
+          <BotonMarcarTerminada
+            leccionId={leccion.id}
+            completada={leccion.estado === 'COMPLETADA'}
+            etiqueta="Finalizar lección"
+          />
+        </>
       )}
 
       {leccion.tipo === 'VIDEO' && !video && (
@@ -96,6 +105,7 @@ export default async function LeccionPage({
           leccionId={leccion.id}
           url={pdf.url}
           permitirDescarga={pdf.permitirDescarga}
+          completada={leccion.estado === 'COMPLETADA'}
         />
       )}
 

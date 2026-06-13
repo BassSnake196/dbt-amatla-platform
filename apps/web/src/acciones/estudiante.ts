@@ -47,6 +47,20 @@ export async function marcarTextoVistoAction(
   }
 }
 
+// Finalizar manualmente una lección VIDEO/PDF/TEXT (botón "Finalizar lección")
+// para poder avanzar en el curso. El QUIZ no entra aquí (se aprueba).
+export async function completarLeccionAction(
+  leccionId: string,
+): Promise<{ completadaAhora: boolean; error: string | null }> {
+  const api = await apiServer()
+  try {
+    const r = await api.estudiante.completarLeccion({ leccionId })
+    return { completadaAhora: r.completadaAhora, error: null }
+  } catch {
+    return { completadaAhora: false, error: 'No se pudo registrar el avance.' }
+  }
+}
+
 export async function renovarUrlVideoAction(
   leccionId: string,
 ): Promise<{ url: string | null; expiraEpoch: number | null; error: string | null }> {

@@ -97,22 +97,19 @@ disponible muy pronto"). Reemplázalo por la UI real:
 `boton-marcar-terminada.tsx` / `reproductor-video.tsx` (estudiante) usan server
 actions + `useTransition` + `router.refresh()`.
 
-## 🐞 PROBLEMAS CONOCIDOS detectados (sesión 7) — pendientes de arreglar
-1. **Video no se puede adelantar/atrasar y la barra de tiempo falla.** Causa: el
-   mock dev de streaming `apps/web/src/app/api/stream-dev/[uid]/route.ts` (GET) NO
-   soporta **HTTP Range requests** (lo dice su propio comentario). Sin 206/
+## 🐞 PROBLEMAS CONOCIDOS / DETALLES FINALES
+1. **PENDIENTE — Video no se puede adelantar/atrasar y la barra de tiempo falla.**
+   Causa: el mock dev de streaming `apps/web/src/app/api/stream-dev/[uid]/route.ts`
+   (GET) NO soporta **HTTP Range requests** (lo dice su propio comentario). Sin 206/
    `Accept-Ranges`, el `<video>` no puede hacer seek y `player.currentTime = X`
    (salto desde una nota) no funciona → **rompe el seek Y las notas por timestamp**.
    FIX: implementar Range en ese GET (parsear header `Range`, responder 206 con
    `Content-Range`/`Accept-Ranges: bytes` y el slice de bytes). Es solo el mock de
-   dev; en prod Cloudflare ya soporta Range. Probablemente conviene hacerlo ANTES
-   o junto con cualquier prueba de video/notas.
-2. **"Botón de completar lección no aparece" en video.** Es POR DISEÑO: el botón
-   `BotonMarcarTerminada` solo se renderiza para `tipo === 'TEXT'`. VIDEO completa
-   automáticamente al 80% (servidor), PDF al abrir, QUIZ al aprobar. Si el usuario
-   quiere un botón manual también en VIDEO, es una decisión de diseño a confirmar
-   (no es un bug). OJO: si el video no es seekable (problema #1) igual se puede
-   completar viéndolo en lineal hasta el 80%.
+   dev; en prod Cloudflare ya soporta Range. Hacerlo cuando se toque video/notas.
+2. **RESUELTO (sesión 7) — Finalizar lección manualmente.** Se añadió
+   `estudiante.completarLeccion` + botón "Finalizar lección" en VIDEO (además del
+   auto al 80%) y en PDF (aparece SOLO en la última página; ya NO autocompleta al
+   abrir). TEXT sigue con su botón. QUIZ se completa aprobándolo. Ver ADR en STATUS.
 
 ## Orden restante del MVP (Fase 4)
 - **4.7** Quiz UI estudiante ← TU TAREA

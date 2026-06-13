@@ -531,6 +531,45 @@ describe('estudiante.materialVisto — abrir el PDF completa la lección', () =>
   })
 })
 
+describe('estudiante.completarLeccion — finalizar manualmente', () => {
+  it('completa VIDEO manualmente (idempotente) y desbloquea la siguiente', async () => {
+    const caller = callerComo(ESTUDIANTE)
+    let r = await caller.estudiante.completarLeccion({ leccionId: leccion1Id })
+    expect(r.completadaAhora).toBe(true)
+    const fila = await prisma.progress.findUniqueOrThrow({
+      where: { enrollmentId_lessonId: { enrollmentId: inscripcionId, lessonId: leccion1Id } },
+    })
+    expect(fila.completedAt).not.toBeNull()
+    // idempotente
+    r = await caller.estudiante.completarLeccion({ leccionId: leccion1Id })
+    expect(r.completadaAhora).toBe(false)
+    // la 2ª estaba bloqueada por secuencia; al completar la 1ª se desbloquea
+    r = await caller.estudiante.completarLeccion({ leccionId: leccion2Id })
+    expect(r.completadaAhora).toBe(true)
+  })
+
+  it('lección bloqueada por secuencia o de otra estudiante: NOT_FOUND', async () => {
+    await expect(
+      callerComo(ESTUDIANTE).estudiante.completarLeccion({ leccionId: leccion3Id }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+    await expect(
+      callerComo(OTRA_ESTUDIANTE).estudiante.completarLeccion({ leccionId: leccion1Id }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+  })
+
+  it('una lección QUIZ no se completa manualmente (BAD_REQUEST)', async () => {
+    await prisma.lesson.update({ where: { id: leccion4Id }, data: { type: 'QUIZ' } })
+    try {
+      await completar(leccion1Id, leccion2Id, leccion3Id) // desbloquear la 4ª
+      await expect(
+        callerComo(ESTUDIANTE).estudiante.completarLeccion({ leccionId: leccion4Id }),
+      ).rejects.toMatchObject({ code: 'BAD_REQUEST' })
+    } finally {
+      await prisma.lesson.update({ where: { id: leccion4Id }, data: { type: 'PDF' } })
+    }
+  })
+})
+
 describe('estudiante.progresoVideo — posición y completitud al 80%', () => {
   it('crea el progreso y watchedSeconds nunca retrocede aunque la posición sí', async () => {
     const caller = callerComo(ESTUDIANTE)
