@@ -10,10 +10,11 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 process.env.DATABASE_URL ??= 'postgresql://amatla:amatla_dev@localhost:5432/amatla_dev'
 
 const { prisma } = await import('@amatla/db')
-const { StreamLocal } = await import('@amatla/storage')
+const { AlmacenLocal, StreamLocal } = await import('@amatla/storage')
 const { createCaller } = await import('../root.js')
 const { createContextInner } = await import('../context.js')
 const { __setStream } = await import('../stream.js')
+const { __setAlmacen } = await import('../almacen.js')
 
 type SessionUser = import('../context.js').SessionUser
 
@@ -115,8 +116,15 @@ beforeAll(async () => {
   directorioStream = await mkdtemp(join(tmpdir(), 'amatla-estudiante-'))
   __setStream(
     new StreamLocal({
-      directorio: directorioStream,
+      directorio: join(directorioStream, 'stream'),
       urlBase: 'http://localhost:3000/api/stream-dev',
+      secreto: 'secreto-test',
+    }),
+  )
+  __setAlmacen(
+    new AlmacenLocal({
+      directorio: join(directorioStream, 'almacen'),
+      urlBase: 'http://localhost:3000/api/almacen-dev',
       secreto: 'secreto-test',
     }),
   )
@@ -141,9 +149,14 @@ beforeAll(async () => {
   cursoNoAsignadoId = (await crearCurso({ titulo: 'Curso ajeno', status: 'PUBLISHED', conLecciones: true })).id
   cursoBorradorId = (await crearCurso({ titulo: 'Curso borrador', status: 'DRAFT' })).id
 
-  // Lecciones 1 y 3 con video ya procesado (enlace que en la vida real hace el worker)
+  // Lecciones 1 y 3 con video ya procesado; lección 4 (PDF) con archivo
+  // escaneado y enlazado (los enlaces que en la vida real hace el worker)
   await prisma.lesson.update({ where: { id: leccion1Id }, data: { videoId: UID_VIDEO } })
   await prisma.lesson.update({ where: { id: leccion3Id }, data: { videoId: UID_VIDEO } })
+  await prisma.lesson.update({
+    where: { id: leccion4Id },
+    data: { fileKey: 'lecciones/material-cuatro.pdf' },
+  })
 
   const inscripcion = await prisma.enrollment.create({
     data: { studentId: ESTUDIANTE.id, courseId: cursoAsignadoId, assignedBy: INSTRUCTORA.id },
@@ -163,11 +176,14 @@ beforeEach(async () => {
 
 afterAll(async () => {
   __setStream(null)
+  __setAlmacen(null)
   await rm(directorioStream, { recursive: true, force: true })
   await prisma.progress.deleteMany({ where: { enrollment: { studentId: ESTUDIANTE.id } } })
   await prisma.calendarEvent.deleteMany({ where: { createdBy: INSTRUCTORA.id } })
   await prisma.enrollment.deleteMany({ where: { studentId: ESTUDIANTE.id } })
   await prisma.course.deleteMany({ where: { instructorId: INSTRUCTORA.id } })
+  // lecciones.actualizar audita UPDATE_LESSON — limpiar antes de borrar usuarios
+  await prisma.auditLog.deleteMany({ where: { userId: { startsWith: PREFIJO } } })
   await prisma.user.deleteMany({ where: { id: { startsWith: PREFIJO } } })
   await prisma.$disconnect()
 })
@@ -424,6 +440,74 @@ describe('estudiante.videoLeccion — URL firmada on-demand', () => {
     await expect(
       callerComo(ESTUDIANTE).estudiante.videoLeccion({ id: leccion3Id }),
     ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+  })
+})
+
+describe('estudiante.pdfLeccion — URL firmada y permiso de descarga', () => {
+  it('PDF accesible: URL firmada con TTL ≤ 30 min; el instructor controla la descarga', async () => {
+    const r = await callerComo(ESTUDIANTE).estudiante.pdfLeccion({ id: leccion4Id })
+    expect(r.url).toContain('/api/almacen-dev/lecciones/material-cuatro.pdf')
+    expect(r.url).toContain('firma=')
+    expect(r.permitirDescarga).toBe(true) // default del schema
+    expect(r.expiraEn.getTime()).toBeLessThanOrEqual(Date.now() + 30 * 60 * 1000)
+
+    // La instructora desactiva la descarga via lecciones.actualizar (su router)
+    await callerComo(INSTRUCTORA).lecciones.actualizar({ id: leccion4Id, permitirDescarga: false })
+    try {
+      const sinDescarga = await callerComo(ESTUDIANTE).estudiante.pdfLeccion({ id: leccion4Id })
+      expect(sinDescarga.permitirDescarga).toBe(false)
+    } finally {
+      await prisma.lesson.update({ where: { id: leccion4Id }, data: { allowDownload: true } })
+    }
+  })
+
+  it('PDF sin archivo, lección VIDEO y sección bloqueada: NOT_FOUND', async () => {
+    await prisma.lesson.update({ where: { id: leccion4Id }, data: { fileKey: null } })
+    try {
+      await expect(
+        callerComo(ESTUDIANTE).estudiante.pdfLeccion({ id: leccion4Id }),
+      ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+    } finally {
+      await prisma.lesson.update({
+        where: { id: leccion4Id },
+        data: { fileKey: 'lecciones/material-cuatro.pdf' },
+      })
+    }
+    await expect(
+      callerComo(ESTUDIANTE).estudiante.pdfLeccion({ id: leccion1Id }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+    // La sección 2 (donde vive el PDF) queda bloqueada
+    await restringirASeccion1()
+    await expect(
+      callerComo(ESTUDIANTE).estudiante.pdfLeccion({ id: leccion4Id }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+  })
+})
+
+describe('estudiante.materialVisto — abrir el PDF completa la lección', () => {
+  it('completa al primer visto y es idempotente', async () => {
+    const caller = callerComo(ESTUDIANTE)
+    let r = await caller.estudiante.materialVisto({ leccionId: leccion4Id })
+    expect(r.completadaAhora).toBe(true)
+
+    const fila = await prisma.progress.findUniqueOrThrow({
+      where: { enrollmentId_lessonId: { enrollmentId: inscripcionId, lessonId: leccion4Id } },
+    })
+    expect(fila.completedAt).not.toBeNull()
+
+    r = await caller.estudiante.materialVisto({ leccionId: leccion4Id })
+    expect(r.completadaAhora).toBe(false)
+  })
+
+  it('sección bloqueada o sin inscripción: NOT_FOUND y sin progreso escrito', async () => {
+    await restringirASeccion1()
+    await expect(
+      callerComo(ESTUDIANTE).estudiante.materialVisto({ leccionId: leccion4Id }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+    await expect(
+      callerComo(OTRA_ESTUDIANTE).estudiante.materialVisto({ leccionId: leccion4Id }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+    expect(await prisma.progress.count({ where: { enrollmentId: inscripcionId } })).toBe(0)
   })
 })
 

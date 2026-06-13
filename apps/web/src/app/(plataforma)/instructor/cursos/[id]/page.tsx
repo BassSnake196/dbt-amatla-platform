@@ -68,6 +68,7 @@ export default async function EstructuraCursoPage({
             esPreview: l.esPreview,
             tieneArchivo: l.tieneArchivo,
             tieneVideo: l.tieneVideo,
+            permitirDescarga: l.permitirDescarga,
           })),
         }))}
       />

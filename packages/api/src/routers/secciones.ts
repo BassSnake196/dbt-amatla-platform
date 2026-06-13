@@ -19,6 +19,8 @@ const leccionResumen = z.object({
   tieneArchivo: z.boolean(),
   /** true cuando ya hay un video procesado y enlazado (videoId). */
   tieneVideo: z.boolean(),
+  /** false = material solo inline, sin descarga directa para el estudiante. */
+  permitirDescarga: z.boolean(),
 })
 
 const seccionResumen = z.object({
@@ -79,6 +81,7 @@ export const seccionesRouter = router({
           esPreview: l.isPreview,
           tieneArchivo: l.fileKey !== null,
           tieneVideo: l.videoId !== null,
+          permitirDescarga: l.allowDownload,
         })),
       }))
     }),

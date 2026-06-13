@@ -3,6 +3,7 @@ import { CheckCircle2, FileText, MonitorPlay, NotebookText } from 'lucide-react'
 import { apiServer } from '@/lib/api-server'
 import { formatearDuracion } from '@/lib/formato'
 import { ReproductorVideo } from '@/components/cursos/reproductor-video'
+import { VisorPdfCliente } from '@/components/cursos/visor-pdf-cliente'
 
 export const metadata = { title: 'Lección — DBT.Amatla' }
 
@@ -22,10 +23,14 @@ export default async function LeccionPage({
   // 404 también si la lección existe pero pertenece a otro curso (URL cruzada)
   if (!leccion || leccion.curso.id !== id) notFound()
 
-  // URL de reproducción solo cuando hay video procesado por el worker
+  // URLs firmadas solo cuando el worker ya procesó/enlazó el contenido
   const video =
     leccion.tipo === 'VIDEO' && leccion.tieneVideo
       ? await api.estudiante.videoLeccion({ id: leccionId }).catch(() => null)
+      : null
+  const pdf =
+    leccion.tipo === 'PDF' && leccion.tieneArchivo
+      ? await api.estudiante.pdfLeccion({ id: leccionId }).catch(() => null)
       : null
 
   return (
@@ -71,11 +76,21 @@ export default async function LeccionPage({
         </div>
       )}
 
-      {leccion.tipo === 'PDF' && (
+      {leccion.tipo === 'PDF' && pdf && (
+        <VisorPdfCliente
+          leccionId={leccion.id}
+          url={pdf.url}
+          permitirDescarga={pdf.permitirDescarga}
+        />
+      )}
+
+      {leccion.tipo === 'PDF' && !pdf && (
         <div className="flex min-h-64 items-center justify-center rounded-card bg-white p-10 text-center shadow-card">
           <div className="text-neutral-900/60">
             <FileText size={32} className="mx-auto text-brand-secondary" aria-hidden="true" />
-            <p className="mt-3 text-sm">El visor de materiales estará disponible muy pronto.</p>
+            <p className="mt-3 text-sm">
+              El material de esta lección está en preparación. Vuelve a intentarlo en un rato.
+            </p>
           </div>
         </div>
       )}

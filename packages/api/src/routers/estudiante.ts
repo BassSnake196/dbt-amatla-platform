@@ -9,6 +9,7 @@ import { z } from 'zod'
 import { TRPCError } from '@trpc/server'
 import { router, protectedProcedure } from '../trpc.js'
 import { obtenerStream } from '../stream.js'
+import { obtenerAlmacen } from '../almacen.js'
 import type { Context, SessionUser } from '../context.js'
 
 const cursoAsignado = z.object({
@@ -381,6 +382,7 @@ export const estudianteRouter = router({
         duracion: z.number().int().nullable(),
         estado: estadoLeccion,
         tieneVideo: z.boolean(), // VIDEO con video ya procesado por el worker
+        tieneArchivo: z.boolean(), // PDF con archivo escaneado y enlazado
         ultimaPosicion: z.number().int(), // segundos — para reanudar reproducción
         curso: z.object({ id: z.string(), titulo: z.string() }),
         seccionTitulo: z.string(),
@@ -409,6 +411,7 @@ export const estudianteRouter = router({
             : ('EN_PROGRESO' as const)
           : ('PENDIENTE' as const),
         tieneVideo: leccion.videoId !== null,
+        tieneArchivo: leccion.fileKey !== null,
         ultimaPosicion: progreso?.lastPosition ?? 0,
         curso: { id: curso.id, titulo: curso.title },
         seccionTitulo: leccion.section.title,
@@ -438,6 +441,69 @@ export const estudianteRouter = router({
       }
       const firmada = await obtenerStream().urlReproduccion(leccion.videoId)
       return { url: firmada.url, tipo: 'video/mp4' as const, expiraEn: firmada.expiraEn }
+    }),
+
+  /**
+   * URL de lectura de un PDF de lección accesible — firmada ON-DEMAND con
+   * TTL 30 min (regla #10). `permitirDescarga` controla si la UI ofrece
+   * descarga directa o solo el visor inline (lo configura el instructor).
+   */
+  pdfLeccion: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .output(
+      z.object({
+        url: z.string(),
+        permitirDescarga: z.boolean(),
+        expiraEn: z.date(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const { leccion } = await leccionAccesible(ctx, input.id)
+      if (leccion.type !== 'PDF' || !leccion.fileKey) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Lección no encontrada.' })
+      }
+      const firmada = obtenerAlmacen().urlLectura(leccion.fileKey)
+      return {
+        url: firmada.url,
+        permitirDescarga: leccion.allowDownload,
+        expiraEn: firmada.expiraEn,
+      }
+    }),
+
+  /**
+   * Marcar un material (PDF) como visto = lección completada. El cliente lo
+   * llama cuando el documento terminó de cargar en el visor. Pegajoso: una
+   * lección completada no se des-completa.
+   */
+  materialVisto: protectedProcedure
+    .input(z.object({ leccionId: z.string() }))
+    .output(z.object({ completadaAhora: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      const { leccion, inscripcion } = await leccionAccesible(ctx, input.leccionId)
+      if (leccion.type !== 'PDF' || !leccion.fileKey) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Lección no encontrada.' })
+      }
+
+      const previo = await ctx.prisma.progress.findUnique({
+        where: {
+          enrollmentId_lessonId: { enrollmentId: inscripcion.id, lessonId: leccion.id },
+        },
+        select: { completedAt: true },
+      })
+      if (previo?.completedAt) return { completadaAhora: false }
+
+      await ctx.prisma.progress.upsert({
+        where: {
+          enrollmentId_lessonId: { enrollmentId: inscripcion.id, lessonId: leccion.id },
+        },
+        create: {
+          enrollmentId: inscripcion.id,
+          lessonId: leccion.id,
+          completedAt: new Date(),
+        },
+        update: { completedAt: new Date() },
+      })
+      return { completadaAhora: true }
     }),
 
   /**

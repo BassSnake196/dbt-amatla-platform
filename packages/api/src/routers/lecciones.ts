@@ -111,12 +111,14 @@ export const leccionesRouter = router({
       return { id: leccion.id }
     }),
 
-  /** Renombrar / cambiar tipo / marcar como preview una lección propia. */
+  /** Renombrar / cambiar tipo / preview / permitir descarga de una lección propia. */
   actualizar: instructorProcedure
     .input(
       datosLeccion.partial().extend({
         id: z.string(),
         esPreview: z.boolean().optional(),
+        // false = el material solo se ve inline, sin descarga directa
+        permitirDescarga: z.boolean().optional(),
       }),
     )
     .output(z.object({ id: z.string() }))
@@ -129,6 +131,7 @@ export const leccionesRouter = router({
             ...(input.titulo !== undefined && { title: input.titulo }),
             ...(input.tipo !== undefined && { type: input.tipo }),
             ...(input.esPreview !== undefined && { isPreview: input.esPreview }),
+            ...(input.permitirDescarga !== undefined && { allowDownload: input.permitirDescarga }),
           },
         })
         await auditFromRequest(

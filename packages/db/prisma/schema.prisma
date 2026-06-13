@@ -162,6 +162,9 @@ model Lesson {
   fileKey   String? // Key en R2 (NO la URL firmada)
   duration  Int? // segundos
   isPreview Boolean    @default(false)
+  // Si el instructor lo desactiva, el material (PDF) solo se ve inline —
+  // sin botón de descarga directa para el estudiante
+  allowDownload Boolean @default(true)
 
   section  Section    @relation(fields: [sectionId], references: [id], onDelete: Cascade)
   progress Progress[]

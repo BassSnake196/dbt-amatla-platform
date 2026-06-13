@@ -67,6 +67,21 @@ export async function eliminarLeccionAction(
   }
 }
 
+export async function alternarDescargaLeccionAction(
+  cursoId: string,
+  leccionId: string,
+  permitir: boolean,
+): Promise<ResultadoLeccion> {
+  try {
+    const api = await apiServer()
+    await api.lecciones.actualizar({ id: leccionId, permitirDescarga: permitir })
+    revalidatePath(`/instructor/cursos/${cursoId}`)
+    return { error: null }
+  } catch (error) {
+    return { error: mensajeLegible(error) }
+  }
+}
+
 export async function reordenarLeccionesAction(
   cursoId: string,
   seccionId: string,

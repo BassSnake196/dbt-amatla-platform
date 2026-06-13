@@ -18,8 +18,9 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { AlignLeft, Check, Eye, FileCheck2, FileText, GripVertical, MonitorPlay, Pencil, Plus, SquareArrowOutUpRight, Trash2, Video, X } from 'lucide-react'
+import { AlignLeft, Check, Download, Eye, FileCheck2, FileLock2, FileText, GripVertical, MonitorPlay, Pencil, Plus, SquareArrowOutUpRight, Trash2, Video, X } from 'lucide-react'
 import {
+  alternarDescargaLeccionAction,
   crearLeccionAction,
   eliminarLeccionAction,
   renombrarLeccionAction,
@@ -39,6 +40,8 @@ export interface LeccionItem {
   tieneArchivo: boolean
   /** true cuando ya hay un video procesado y enlazado (lecciones VIDEO). */
   tieneVideo: boolean
+  /** false = el estudiante solo ve el material inline, sin descarga directa. */
+  permitirDescarga: boolean
 }
 
 /** 754 → "12:34"; 3725 → "1:02:05" — para el badge de duración del video. */
@@ -111,6 +114,7 @@ export function LeccionesSeccion({ cursoId, seccionId, lecciones: iniciales, onE
             esPreview: false,
             tieneArchivo: false,
             tieneVideo: false,
+            permitirDescarga: true,
           },
         ])
       }
@@ -131,6 +135,16 @@ export function LeccionesSeccion({ cursoId, seccionId, lecciones: iniciales, onE
     setLecciones((prev) => prev.filter((l) => l.id !== leccionId))
     startTransition(async () => {
       const r = await eliminarLeccionAction(cursoId, leccionId)
+      if (r.error) onError(r.error)
+    })
+  }
+
+  function alternarDescarga(leccionId: string, permitir: boolean) {
+    setLecciones((prev) =>
+      prev.map((l) => (l.id === leccionId ? { ...l, permitirDescarga: permitir } : l)),
+    )
+    startTransition(async () => {
+      const r = await alternarDescargaLeccionAction(cursoId, leccionId, permitir)
       if (r.error) onError(r.error)
     })
   }
@@ -157,6 +171,7 @@ export function LeccionesSeccion({ cursoId, seccionId, lecciones: iniciales, onE
                   leccion={leccion}
                   onRenombrar={renombrar}
                   onEliminar={eliminar}
+                  onAlternarDescarga={alternarDescarga}
                 />
               ))}
             </ol>
@@ -200,11 +215,13 @@ function LeccionFila({
   leccion,
   onRenombrar,
   onEliminar,
+  onAlternarDescarga,
 }: {
   cursoId: string
   leccion: LeccionItem
   onRenombrar: (id: string, titulo: string) => void
   onEliminar: (id: string) => void
+  onAlternarDescarga: (id: string, permitir: boolean) => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: leccion.id,
@@ -312,6 +329,27 @@ function LeccionFila({
                   aria-label="PDF cargado"
                 />
               )}
+              <button
+                type="button"
+                onClick={() => onAlternarDescarga(leccion.id, !leccion.permitirDescarga)}
+                className={`rounded p-1 ${
+                  leccion.permitirDescarga
+                    ? 'text-neutral-900/40 hover:text-brand-secondary'
+                    : 'text-brand-primary hover:text-brand-dark'
+                }`}
+                aria-label={
+                  leccion.permitirDescarga
+                    ? `Bloquear descarga de ${leccion.titulo}`
+                    : `Permitir descarga de ${leccion.titulo}`
+                }
+                title={
+                  leccion.permitirDescarga
+                    ? 'Descarga permitida — clic para dejar solo lectura inline'
+                    : 'Solo lectura inline — clic para permitir descarga'
+                }
+              >
+                {leccion.permitirDescarga ? <Download size={13} /> : <FileLock2 size={13} />}
+              </button>
               <SubirArchivo
                 compacto
                 proposito="PDF_LECCION"
