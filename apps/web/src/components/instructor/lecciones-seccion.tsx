@@ -19,7 +19,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { AlignLeft, Check, Download, Eye, FileCheck2, FileLock2, FileText, GripVertical, MonitorPlay, Pencil, Plus, SquareArrowOutUpRight, Trash2, Video, X } from 'lucide-react'
+import { AlignLeft, Check, Download, Eye, FileCheck2, FileLock2, FileText, GripVertical, ListChecks, MonitorPlay, Pencil, Plus, SquareArrowOutUpRight, Trash2, Video, X } from 'lucide-react'
 import {
   alternarDescargaLeccionAction,
   crearLeccionAction,
@@ -58,7 +58,7 @@ const ICONO_TIPO = {
   VIDEO: Video,
   PDF: FileText,
   TEXT: AlignLeft,
-  QUIZ: FileText,
+  QUIZ: ListChecks,
 } as const
 
 interface LeccionesProps {
@@ -190,6 +190,7 @@ export function LeccionesSeccion({ cursoId, seccionId, lecciones: iniciales, onE
           <option value="VIDEO">Video</option>
           <option value="PDF">PDF</option>
           <option value="TEXT">Texto</option>
+          <option value="QUIZ">Quiz</option>
         </select>
         <input
           type="text"
@@ -368,6 +369,16 @@ function LeccionFila({
               title={`Editar contenido de ${leccion.titulo}`}
             >
               <Pencil size={13} />
+            </Link>
+          )}
+          {leccion.tipo === 'QUIZ' && (
+            <Link
+              href={`/instructor/cursos/${cursoId}/lecciones/${leccion.id}/quiz`}
+              className="rounded p-1 text-neutral-900/40 hover:text-brand-secondary"
+              aria-label={`Gestionar preguntas de ${leccion.titulo}`}
+              title={`Gestionar preguntas de ${leccion.titulo}`}
+            >
+              <ListChecks size={13} />
             </Link>
           )}
           <a

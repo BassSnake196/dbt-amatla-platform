@@ -10,7 +10,7 @@ export interface ResultadoLeccion {
   id?: string
 }
 
-export type TipoLeccion = 'VIDEO' | 'PDF' | 'TEXT'
+export type TipoLeccion = 'VIDEO' | 'PDF' | 'TEXT' | 'QUIZ'
 
 function mensajeLegible(error: unknown): string {
   const mensaje = error instanceof Error ? error.message : 'Algo salió mal. Intenta de nuevo.'

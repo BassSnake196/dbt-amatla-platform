@@ -1,6 +1,6 @@
 # 📌 Estado del Proyecto: Plataforma E-Learning
-- **Última actualización:** 2026-06-13 (sesión 7) — Fase 4: 4.5 COMPLETA (quiz backend: modelos QuizQuestion/QuizAttempt + router quiz con score server-side). Migración add_quiz. 207 tests.
-- **Fase Actual:** Fase 4 (MVP completo) — 4.0/4.1/4.2/4.3/4.4/4.5 ✅; siguiente: 4.6 (quiz UI instructor)
+- **Última actualización:** 2026-06-13 (sesión 7) — Fase 4: 4.5 (quiz backend) + 4.6 (quiz UI instructor: gestor de preguntas dnd-kit + passingScore) COMPLETAS. Migración add_quiz. 207 tests.
+- **Fase Actual:** Fase 4 (MVP completo) — 4.0/4.1/4.2/4.3/4.4/4.5/4.6 ✅; siguiente: 4.7 (quiz UI estudiante)
 - **Objetivo del Sprint:** Cerrar el MVP: asignación, progreso secuencial, quiz, editor TEXT, panel admin, progreso por estudiante (certificado/email/granular/móvil DIFERIDOS)
 
 ## 📋 Roadmap Global (v3.0 — MVP sin chatbot IA)
@@ -31,7 +31,7 @@
 - [x] **4.3** Botón "Marcar como terminada" para lecciones TEXT ✅ (2026-06-13)
 - [x] **4.4** Editor de contenido TEXT con Tiptap (instructor) + vista renderizada (estudiante) ✅ (2026-06-13)
 - [x] **4.5** Quiz backend: router quiz, procedures CRUD preguntas + enviar intento ✅ (2026-06-13)
-- [ ] **4.6** Quiz UI instructor: gestión de preguntas + passingScore
+- [x] **4.6** Quiz UI instructor: gestión de preguntas + passingScore ✅ (2026-06-13)
 - [ ] **4.7** Quiz UI estudiante: formulario + feedback + reintento
 - [ ] **4.8** Panel de admin: tabla de usuarios, cambiar rol, activar/desactivar
 - [ ] **4.9** Vista de progreso del estudiante para el instructor (lección por lección)
@@ -71,6 +71,27 @@
 - [x] Preview de lección + publicar/archivar con validación
 
 ## 🧠 Memoria de Decisiones (ADRs)
+
+### ADR — 2026-06-13 — Quiz UI instructor (Fase 4, tarea 4.6)
+**Solo frontend** — consume el router `quiz` de 4.5 (sin cambios de backend).
+**Página** `/instructor/cursos/[id]/lecciones/[leccionId]/quiz` (server component):
+`exigirInstructor()` + `lecciones.preview` (valida ownership → 404; además exige
+`tipo === 'QUIZ'`) + `quiz.preguntas` (devuelve las preguntas CON la correcta —es la
+vista del instructor). **Componente** `GestorQuiz` (`components/instructor/gestor-quiz.tsx`,
+client): config de `passingScore` (input 1-100 + guardar), lista de preguntas con
+**dnd-kit** (mismo patrón que `lecciones-seccion`: `PointerSensor`/`KeyboardSensor`, `id`
+determinista `dnd-preguntas-${leccionId}` para evitar mismatch SSR), y un `FormularioPregunta`
+reutilizado para crear y editar (enunciado, 4 opciones, radio para marcar la correcta —`name`
+único con `useId`—, explicación opcional). Estado optimista con revertir en error (reorder y
+delete), como el resto del instructor. **Server actions** `acciones/quiz.ts`: crear/actualizar/
+eliminar/reordenar pregunta + configurarPassingScore; reusan `mensajeLegible` y revalidan
+`/instructor/.../quiz`. **Integración:** `datosLeccion`/`TipoLeccion` ya aceptaban QUIZ (4.5);
+añadido al `<select>` de nueva lección, icono `ListChecks` para QUIZ, y enlace al gestor en la
+fila de lección QUIZ (junto al patrón del enlace TEXT→editar). **Verificación:** `type-check` +
+`next build` en verde; la nueva ruta compila y se renderiza server-side. NO se hizo e2e de
+navegador (los dev servers quedaron detenidos desde la migración de 4.5 y no hay forma de
+manejar el navegador en esta sesión) — pendiente smoke test manual del instructor. La UI del
+estudiante es 4.7.
 
 ### ADR — 2026-06-13 — Quiz backend (Fase 4, tarea 4.5)
 **Schema** (migración `add_quiz`, aplicada con dev servers detenidos por el EPERM de Windows):
