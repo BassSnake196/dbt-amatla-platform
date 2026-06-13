@@ -6,6 +6,12 @@
 // instructor bloquea la descarga. Al cargar el documento se marca la
 // lección como vista (completada) y se refresca el índice.
 
+// IMPORTANTE: este import va PRIMERO. Aplica el polyfill de
+// Promise.withResolvers (ES2024) como efecto secundario ANTES de evaluar
+// react-pdf/pdfjs-dist, que lo necesitan en runtime y no existe en Safari
+// < 17.4, navegadores antiguos ni varios WebView móviles.
+import '@/lib/polyfill-promise-withresolvers'
+
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronRight, Download, Loader2 } from 'lucide-react'
