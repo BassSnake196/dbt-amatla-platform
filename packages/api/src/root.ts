@@ -9,6 +9,7 @@ import { leccionesRouter } from './routers/lecciones.js'
 import { archivosRouter } from './routers/archivos.js'
 import { videosRouter } from './routers/videos.js'
 import { estudianteRouter } from './routers/estudiante.js'
+import { inscripcionesRouter } from './routers/inscripciones.js'
 
 export const appRouter = router({
   health: healthRouter,
@@ -19,6 +20,7 @@ export const appRouter = router({
   archivos: archivosRouter,
   videos: videosRouter,
   estudiante: estudianteRouter,
+  inscripciones: inscripcionesRouter,
 })
 
 /** Tipo del router — lo consume el cliente tRPC en apps/web para type-safety extremo a extremo. */

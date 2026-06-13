@@ -1,110 +1,247 @@
 # 📌 Estado del Proyecto: Plataforma E-Learning
-- **Última actualización:** 2026-06-13 (sesión 6) — Fix: thumbnail real en cards del estudiante. DIAGNÓSTICO: el flujo instructor→estudiante NO es demostrable sin la asignación (Enrollment), que es Fase 4. Ver ADR.
-- **Fase Actual:** Fase 3 ✅ (gaps cerrados) → BLOQUEANTE para demo: Fase 4 tarea "Asignación de cursos" (sin ella el portal del estudiante solo muestra lo que el seed asignó)
-- **Objetivo del Sprint:** Portal del estudiante con datos reales — dashboard, vista de curso, reproductor, visor PDF y notas cifradas
+- **Última actualización:** 2026-06-13 (sesión 6) — Fase 4 tarea 4.1 (asignación de curso completo) COMPLETA. 185 tests.
+- **Fase Actual:** Fase 4 (MVP completo) — 4.1 ✅; siguiente: 4.2 (progreso secuencial)
+- **Objetivo del Sprint:** Cerrar el MVP: asignación, progreso secuencial, quiz, editor TEXT, certificado
 
-## 📋 Roadmap Global
+## 📋 Roadmap Global (v3.0 — MVP sin chatbot IA)
 - [x] Fase 1: Infraestructura y Auth ✅ (2026-06-11)
 - [x] Fase 2: Gestión de Cursos ✅ (2026-06-12)
 - [x] Fase 3: Experiencia del Estudiante ✅ (2026-06-13)
-- [ ] Fase 4: Administración + Asignación (siguiente)
+- [ ] Fase 4: MVP Completo — Asignación + Progreso Secuencial + Quiz + Certificado (EN CURSO)
+- [ ] Fase 5: Calidad + CI/CD completo + App Móvil base
+- [ ] Fase 6: IA con Claude — chatbot de estudio (Post-MVP, fecha a decidir)
 
-## 🎯 Fase 3 — Experiencia del Estudiante
-- [x] Dashboard de estudiante: cursos asignados (Enrollment), progreso general y próximas sesiones
+> **Decisión de roadmap (2026-06-13):** La IA conversacional (chatbot) se eliminó del MVP.
+> El módulo `packages/ai-safety` está scaffolded pero no tiene tareas activas.
+> El objetivo es sacar a producción un MVP funcional (tipo Udemy) antes de añadir IA.
+> Ver ADR completo al final de este archivo.
+
+## 🎯 Fase 3 — Experiencia del Estudiante ✅
+- [x] Dashboard de estudiante: cursos asignados (Enrollment), progreso general
 - [x] Vista de curso con sidebar: secciones colapsables, estado por lección (✓ / en progreso / 🔒)
 - [x] Reproductor de video Vidstack: URL firmada renovable, posición cada 15s, completar al 80%, velocidades
-- [x] Visor PDF inline (react-pdf) con URL firmada y descarga configurable por el instructor
+- [x] Visor PDF inline (react-pdf) con URL firmada y control de descarga por instructor
 - [x] Notas personales por timestamp en el video (texto cifrado AES-256-GCM en BD)
-- [x] Barra de progreso por curso (cabecera de la vista de curso + cards del dashboard — datos reales)
+- [x] Barra de progreso por curso (cabecera de la vista de curso + cards del dashboard)
 
-## 🎯 Tareas del Día (Daily Tasks)
+## 🎯 Fase 4 — MVP Completo (Tareas del Día)
+- [ ] **4.0** Migración schema: modelos QuizQuestion + QuizAttempt + campo passingScore en Lesson
+      (verificar si ya existen antes de crear; si no, migrar primero)
+- [x] **4.1** Asignación de curso completo: UI + router ✅ (2026-06-13 — desbloquea la demo e2e)
+- [ ] **4.2** Progreso secuencial: bloqueo server-side de lección N+1 + límite scrubbing video
+- [ ] **4.3** Botón "Marcar como terminada" para lecciones TEXT
+- [ ] **4.4** Editor de contenido TEXT con Tiptap (instructor) + vista renderizada (estudiante)
+- [ ] **4.5** Quiz backend: router quiz, procedures CRUD preguntas + enviar intento
+- [ ] **4.6** Quiz UI instructor: gestión de preguntas + passingScore
+- [ ] **4.7** Quiz UI estudiante: formulario + feedback + reintento
+- [ ] **4.8** Panel de admin: tabla de usuarios, cambiar rol, activar/desactivar
+- [ ] **4.9** Vista de progreso del estudiante para el instructor (lección por lección)
+- [ ] **4.10** Generación de certificado PDF al completar 100% (@react-pdf/renderer + R2)
+- [ ] **4.11** Notificaciones email (Resend): bienvenida, curso asignado, certificado
+
+## 🎯 Tareas del Día (Daily Tasks — Fase 1 completada)
 - [x] Inicializar monorepo con Turborepo
 - [x] Configurar Docker Compose (PostgreSQL base)
 - [x] Crear schema.prisma inicial
 - [x] Configurar Fastify + tRPC (Endpoints base)
 - [x] Crear layout visual (Next.js 15)
 
-## 🎯 Fase 1 — tareas restantes (continuación del sprint)
+## 🎯 Fase 1 — Infraestructura ✅
 - [x] Implementar y testear `packages/crypto` (AES-256-GCM)
-- [x] Implementar y testear `packages/ai-safety` (classifyMessage)
+- [x] Implementar stub `packages/ai-safety` (scaffolded — activo en Fase 6)
 - [x] Variables de entorno tipadas con Zod en `packages/config`
-- [x] Helper centralizado de AuditLog
+- [x] Helper centralizado de AuditLog con catálogo cerrado AUDIT_ACTIONS
 - [x] NextAuth.js v5: Magic Link (Resend) + Google OAuth
 - [x] GitHub Actions: CI básico (type-check + lint + tests)
 
-## 🎯 Fase 2 — Gestión de Cursos (Instructor)
+## 🎯 Fase 2 — Gestión de Cursos ✅
 - [x] Dashboard de instructor: mis cursos con status y métricas
 - [x] CRUD de curso: crear/editar título, descripción, categoría
 - [x] CRUD de secciones con reordenamiento (dnd-kit)
 - [x] CRUD de lecciones: VIDEO/PDF/TEXT con reordenamiento
-- [x] Upload de thumbnail/PDFs (presigned R2 mockeado + pipeline ClamAV)
+- [x] Upload de thumbnail/PDFs (presigned R2 + pipeline ClamAV)
 - [x] Upload de video (Cloudflare Stream mockeado + webhook)
 - [x] Preview de lección + publicar/archivar con validación
 
 ## 🧠 Memoria de Decisiones (ADRs)
-- **2026-06-13 — DIAGNÓSTICO de "no se ve nada" (reporte del usuario) + fix thumbnail:** El usuario reportó (1) "publico un curso nuevo y no aparece más que el principal" y (2) "el thumbnail no sale". Hallazgos: **(1) NO es bug — es Fase 4 faltante.** El portal del estudiante solo muestra cursos con `Enrollment` (regla de negocio: los cursos se ASIGNAN, no se navegan). Solo `curso-dev-1` está asignado (via seed-dev.sql). **No existe UI para que un instructor/admin asigne un curso a un estudiante** → ningún curso nuevo publicado llega a ningún estudiante. Esa UI es la 1ª tarea de Fase 4 ("Asignación granular") y es el BLOQUEANTE real para demostrar todo el portal del estudiante. Marqué Fase 3 "completa" sin que el flujo instructor→estudiante fuera demostrable e2e — corregido el encuadre. **(2a) Thumbnail PENDING era operacional:** el worker de media estaba apagado al subir → escaneos ClamAV encolados sin procesar (2 jobs en `wait` en Redis) → nunca CLEAN → nunca enlazado a `Course.thumbnail`. Al arrancar `npm run dev -w @amatla/worker-media` se procesaron y quedaron CLEAN + enlazados. RECORDATORIO: el worker DEBE correr o los uploads quedan PENDING indefinidamente (pendiente futuro: recuperación de PENDING al arrancar). **(2b) Bug de código REAL (corregido):** aunque el thumbnail esté enlazado, las `CursoCard` del estudiante usaban SOLO arte generativo CSS, nunca el thumbnail real. Fix: `estudiante.dashboard` ahora devuelve `thumbnailUrl` (firmada on-demand via `obtenerAlmacen().urlLectura`, regla #10); `CursoCard` muestra `<img>` con overlay degradado si hay thumbnail, cae al arte generativo (Ψ) si no. Verificado e2e: card de curso-dev-1 con `<img>` real → GET firmado 200 image/jpeg 45441 bytes. **GOTCHA verificación:** las URLs en HTML llevan `&amp;` (entidad) — al extraerlas para curl convertir `&amp;`→`&` (distinto del `&` del payload RSC). Tests siguen 30/30 (los cursos de prueba no tienen thumbnail → null, no invocan el almacén).
-- **2026-06-13 — Notas personales por timestamp (Fase 3, tarea 5 — PRIMER dato cifrado en prod):** migración `20260613053901_add_lesson_note` — modelo `LessonNote` (enrollmentId + lessonId + `positionSeconds` + `body @db.Text` **[ENCRYPTED]** + timestamps; `@@index([enrollmentId, lessonId])`; cascade desde Enrollment y Lesson). **Estrena `@amatla/crypto` en la app** (antes solo testeado): `crearNota`/`actualizarNota` cifran `body` con `encrypt()` ANTES de persistir, `notasLeccion` descifra con `decryptField()` (null-safe ante corrupción) — regla #9. Procedures en el router del estudiante (`protectedProcedure`): `notasLeccion` (lista ordenada por timestamp, solo de lección accesible), `crearNota` (posición recortada a `Lesson.duration`, texto 1–2000 chars vía Zod), `actualizarNota`/`eliminarNota` (ownership vía `notaPropia` = enrollment.studentId === user.id → NOT_FOUND si ajena). `@amatla/crypto` agregado a deps de `@amatla/api`. UI: `NotasVideo` integrado DENTRO de `ReproductorVideo` (comparte el `playerRef`: capturar timestamp al enfocar el textarea, saltar al timestamp al clic en una nota — `irATiempo` posiciona y reproduce si estaba pausado); badge "privadas y cifradas"; server actions en `acciones/estudiante.ts` (la web no monta tRPC HTTP); las notas se recargan con `listarNotasAction` tras cada mutación (las mutaciones solo devuelven id). Helper `formatearTimestamp` (MM:SS / H:MM:SS) en `lib/formato.ts`. **IMPORTANTE — claves de cifrado en dev:** `ENCRYPTION_MASTER_KEY`/`ENCRYPTION_SALT` ahora son OBLIGATORIAS para que las notas funcionen; agregadas a `packages/api/.env` Y `apps/web/.env.local` (ambos corren el caller in-process; gitignoreados, claves solo-dev). Sin ellas, `encrypt()` lanza. El config las exige solo en prod, pero la feature las necesita siempre. Verificado e2e: nota creada vía Fastify → `body` en BD en formato `iv:authTag:ciphertext` (NO texto plano), listado la descifra, instructora sin inscripción → 404, panel renderiza en la página con timestamp 0:45. **GOTCHA curl multibyte:** un body JSON con acentos (`ó`) por `-d` da `FST_ERR_CTP_INVALID_CONTENT_LENGTH` (Content-Length cuenta bytes ≠ chars) — usar `--data-binary @archivo` o texto ASCII. 4 tests nuevos — **177 totales**.
-- **2026-06-13 — Visor PDF (Fase 3, tarea 4):** migración `20260613003455_add_lesson_allow_download` — `Lesson.allowDownload Boolean @default(true)` (descargar materiales es permiso normal del STUDENT en el RBAC; el instructor lo RESTRINGE por lección). `lecciones.actualizar` acepta `permitirDescarga`; `secciones.listar` lo expone; toggle en la fila de lección PDF del instructor (ícono Download/FileLock2, optimista). Estudiante: `estudiante.pdfLeccion` (URL de lectura firmada on-demand TTL 30 min, regla #10 + `permitirDescarga`; NOT_FOUND si sin archivo/VIDEO/bloqueada) y `estudiante.materialVisto` (**decisión: abrir el material = lección completada** — se dispara en `onLoadSuccess` del visor, pegajoso e idempotente; PDF es el único tipo "visto" por ahora). `estudiante.leccion` expone `tieneArchivo`. Visor `react-pdf@10.4.1` (instala limpio con React 19): client-only via `next/dynamic ssr:false` (pdf.js usa DOMMatrix/canvas — revienta en SSR de Node), worker de pdfjs via `new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url)`, paginación con ancho responsive (ResizeObserver), **sin capa de texto/anotaciones** (contenido no seleccionable/copiable — coherente con el modo sin descarga); botón Descargar solo si `permitirDescarga`. Nota honesta: el "no descargar" es de UI — la URL firmada sigue siendo un GET válido 30 min (inevitable: el visor necesita leer los bytes); la protección real es la firma + TTL + acceso por Enrollment. Verificado e2e: página con PDF real → URL firmada 200 application/pdf; toggle instructora via curl → `permitirDescarga:false` al estudiante; `materialVisto` → completadaAhora + fila Progress. **GOTCHA verificación RSC:** las URLs en el payload RSC van como `\\u0026` (doble escape) — al extraerlas con grep/sed para curl hay que convertir `&`→`&` Y quitar la `\` residual. 4 tests nuevos — **173 totales**.
-- **2026-06-12 — Reproductor de video (Fase 3, tarea 3):** `estudiante.videoLeccion` (URL firmada ON-DEMAND via `obtenerStream().urlReproduccion`, TTL 30 min, regla #10; NOT_FOUND si VIDEO sin procesar / PDF / bloqueada) y `estudiante.progresoVideo` (cada ~15 s desde el cliente; `lastPosition` = posición actual, `watchedSeconds` = máximo alcanzado —nunca retrocede—, posición recortada a `Lesson.duration` de BD; **completar al 80% lo decide el SERVER con la duración de BD, nunca el cliente, y es pegajoso**). `estudiante.leccion` ahora expone `tieneVideo` y `ultimaPosicion` (reanudar; si ya está COMPLETADA se reproduce desde 0). El refactor extrajo `leccionAccesible()` (compartido por leccion/videoLeccion/progresoVideo). **El cliente NO usa tRPC HTTP**: server actions (`acciones/estudiante.ts`) delegan en el caller — mismo patrón del resto de la web. `ReproductorVideo` (Vidstack): intervalo de 15 s solo si no está pausado + guardado inmediato en pause/ended; renovación de URL con setTimeout a expiración−5 min (guarda posición, cambia src, restaura posición en onCanPlay — mismo mecanismo para reanudar); `completadaAhora` → `router.refresh()` (la ✓ del índice y la barra se actualizan); velocidades 0.75–2x via `playbackRates` (prop del **DefaultVideoLayout**, no del MediaPlayer); etiquetas en español via `translations`. **GOTCHA vidstack/npm:** el dist-tag `latest` de `@vidstack/react` apunta a la 0.6 vieja — la línea actual (1.15.6) vive bajo el tag `next`; además declara peer `@types/react@^18` → instalar con versión EXACTA y `--legacy-peer-deps` (funciona bien con React 19). El mock local reproduce como `video/mp4` (z.literal en el output; con Cloudflare real será manifest HLS — ampliar la unión entonces). El sub-bullet "notas personales por timestamp (cifradas)" se difirió a tarea propia: requiere modelo nuevo en el schema (no existe) + migración + crypto. Verificado e2e: página de lección con video real (754 s) renderiza el player con URL firmada (GET 200 video/mp4, firma falsa 403), badge Completada; via Fastify: posición 10/34 → EN_PROGRESO, 28/34 → COMPLETADA + fila Progress correcta en BD, sin sesión 401. 6 tests nuevos — **169 totales**.
-- **2026-06-12 — npm audit (actualizado):** ahora 6 (4 high: esbuild via vitest/vite — solo tooling dev, fix = vitest 4 major; 2 moderate: `file-type` ASF loop —lo usa el worker de media, fix = v22 major— y el postcss embebido de Next). Ninguna viene de vidstack. Sigue pendiente para la tarea de security-scan.
-- **2026-06-12 — Vista de curso del estudiante (Fase 3, tarea 2):** `estudiante.curso` y `estudiante.leccion` en el router del estudiante. **Semántica de ModuleAccess decidida** (la UI de asignación llega en Fase 4 pero la regla se respeta desde YA): inscripción SIN filas de ModuleAccess = acceso al curso completo; CON filas = solo esas secciones. Lecciones 🔒: el server manda título RECORTADO (`tituloBloqueado`: corte en min(12, 60% del largo) + "…" — el título completo NUNCA viaja al cliente), `duracion: null`, estado `BLOQUEADA`; `estudiante.leccion` de una lección bloqueada → NOT_FOUND idéntico al de "no existe" (no revelar qué hay tras el candado). Excepción: lecciones `isPreview` visibles/accesibles aunque su sección esté bloqueada. Estados: COMPLETADA (`Progress.completedAt`), EN_PROGRESO (fila de Progress sin completar), PENDIENTE, BLOQUEADA. Progreso del curso cuenta TODAS las lecciones (consistente con dashboard) — **recalibrar a "solo accesibles" en Fase 4**. Web: `/cursos/[id]` (layout con cabecera+barra de progreso e `IndiceCurso` client component: secciones colapsables —las bloqueadas inician cerradas—, badge "Sin acceso", lecciones bloqueadas NO navegables) + página de resumen ("Continuar donde me quedé" → primera lección no completada) + `/cursos/[id]/lecciones/[leccionId]` (marco de lección con placeholder por tipo; el reproductor/visor llegan en la siguiente tarea; valida `leccion.curso.id` vs URL → 404 en ruta cruzada). `obtenerCursoEstudiante` con React `cache()` deduplica la query entre layout y página del mismo request. Dashboard ahora enlaza: CursoCard → `/cursos/[id]`, hero → la lección a retomar (`enCurso.leccionId` nuevo en el schema). Verificado e2e con curl: curso accesible 200 con estructura; curso no asignado/borrador 404; ModuleAccess restringido → badge + título enmascarado en HTML (el completo no aparece) + lección bloqueada por URL directa 404. 7 tests nuevos — **163 totales**.
-- **2026-06-12 — Dashboard de estudiante (primera tarea Fase 3):** router `estudiante.dashboard` (`protectedProcedure` — todo keyed por `ctx.user.id` via Enrollment, regla crítica: NUNCA cursos no asignados) devuelve en una llamada `{ enCurso, cursos, sesiones }`. Solo cursos **PUBLISHED** (archivar lo saca de la vista del estudiante). `progreso` = % de lecciones completadas (`Progress.completedAt`); curso sin lecciones → 0 (sin división por cero). Hero "Continuar" = curso no terminado con `Progress.updatedAt` más reciente; lección a retomar: la última tocada si sigue pendiente, si no la primera no completada en orden sección→lección; `leccionNumero` es posición global aplanada; `restanteSegundos` suma `duration` de lecciones pendientes (NULL cuenta 0). `nuevo` = sin progreso y asignado <14 días. `sesiones` = CalendarEvent futuros SOLO de sus cursos inscritos (orden cronológico, take 4). La página `/` (rediseño que ya existía con mocks) ahora llama `apiServer().estudiante.dashboard()`; `cursos-mock.ts` ELIMINADO. Tipos de la UI inferidos del caller (`Awaited<ReturnType<ApiCaller[...]>>` en `lib/tipos-estudiante.ts` — sin duplicar interfaces). Decisiones de UI: se quitó el rating (no hay modelo de valoraciones — no inventar datos); arte generativo de categoría ahora acepta texto libre (paleta determinista por hash del nombre); "Unirse" solo si hay `meetUrl`; estados vacíos cálidos (sin cursos / sin sesiones); fechas UTC→CDMX con `Intl` en `lib/formato.ts` (`TIMEZONE` de `@amatla/shared`). Seed ampliado: `dev-student-1` + cookie `dev-session-student` + Progress de ejemplo + 2 CalendarEvent que SIEMPRE caen los próximos 2 miércoles 18:00 CDMX (expresión SQL con `DO UPDATE` de fechas — re-seedear las refresca). Verificado e2e: portada como estudiante (hero con lección real, catálogo, sesiones con fecha MIÉ), instructora sin inscripciones → estados vacíos, Fastify+curl: dashboard OK / sin sesión 401. 9 tests nuevos — **156 totales** (el "148" de la sesión anterior contaba 1 de más: eran 147).
-- **2026-06-12 — GOTCHA encoding/psql en Windows:** aplicar `seed-dev.sql` con `Get-Content -Raw | docker exec -i` (PowerShell) corrompe los acentos (`Práctica` → `Pr??ctica`). Usar SIEMPRE bash: `docker exec -i amatla-postgres psql ... < packages/db/seed-dev.sql`.
-- **2026-06-12 — Nota dev local:** la BD local tiene datos manipulados por sesiones anteriores (secciones de `curso-dev-1` reordenadas, lecciones de prueba "hOLA"/"sadsdas") — si un número de lección "no cuadra" con el seed, revisar la BD antes de sospechar del código.
-- **2026-06-12 — Publicar/archivar + vista previa (cierra Fase 2):** `cursos.publicar` exige ≥1 lección con contenido LISTO — VIDEO con `videoId` o PDF con `fileKey` enlazados por el worker (una lección VIDEO sin video procesado NO cuenta; TEXT tampoco hasta que exista el campo de contenido — decisión pendiente del ADR de lecciones). Transiciones: publicar desde DRAFT/ARCHIVED, archivar desde DRAFT/PUBLISHED; repetidas → BAD_REQUEST. Auditoría `PUBLISH_COURSE`/`ARCHIVE_COURSE` en transacción. `lecciones.preview` (instructor, ownership 3 niveles) firma URLs on-demand: `urlReproduccion` nuevo en la interfaz `StreamVideos` (TTL 30 min, regla #10; en Cloudflare real será el manifest HLS firmado — el mock sirve el archivo crudo via GET en `/api/stream-dev/[uid]`, sin soporte Range: suficiente para preview en dev). Página `/instructor/cursos/[id]/lecciones/[leccionId]/vista-previa` (server component, `<video>` nativo / `<iframe>` PDF / aviso para TEXT) — valida que `leccion.curso.id` coincida con la URL (404 en ruta cruzada). Botones publicar/archivar (`AccionesCurso`) en la estructura del curso; enlace de vista previa por fila de lección (nueva pestaña). Verificado e2e: curso sin contenido → BAD_REQUEST con mensaje; archivar→republicar OK; GET de video firmado 200 / firma falsa 403; páginas con cookie. 11 tests nuevos — **148 totales**.
-- **2026-06-12 — GOTCHA dnd-kit/hidratación:** `DndContext` sin prop `id` numera `aria-describedby` con un contador global (`DndDescribedBy-N`) que se desfasa entre SSR y cliente (el Strict Mode de dev duplica renders e incrementa el contador) → error de hidratación en consola. Fix: TODO `DndContext` debe llevar `id` determinista (`dnd-secciones-${cursoId}`, `dnd-lecciones-${seccionId}`). Aplicar también en futuros usos de dnd-kit.
-- **2026-06-12 — Mock de Cloudflare Stream (`stream.ts` en `@amatla/storage`):** replica "Direct Creator Uploads": interfaz `StreamVideos` (`crearSubidaDirecta` → uid hex-32 + uploadUrl de un solo uso firmada HMAC con TTL 30 min; `eliminar`) con implementación `StreamLocal` (videos en `<raíz>/.stream-dev`, gitignoreado). El "procesamiento" lo simula el endpoint dev: extrae la duración parseando ISO BMFF (caja `moov > mvhd`, ~60 líneas propias — MP4 y MOV comparten formato; sin FFmpeg) y dispara el webhook firmado **formato Cloudflare** (`Webhook-Signature: time=...,sig1=HMAC(secreto, time.cuerpo)`, ventana anti-replay 5 min) — así el handler del webhook es EL MISMO en dev y prod. Decisión: NO se genera thumbnail en el worker (el prompt lo pedía) porque Cloudflare Stream los sirve gratis por URL (`/thumbnails/thumbnail.jpg`) y Lesson no tiene campo thumbnail — no sobredimensionar. 9 tests.
-- **2026-06-12 — Router `videos` + modelo `VideoUpload`:** migración `20260612162525_add_video_upload` (uid único de Stream, `lessonId` SIN FK —el registro sobrevive a la lección, como FileUpload—, status PENDING|READY|ERROR, duration). `solicitarSubida` valida ext mp4/mov + coherencia ext↔MIME + ≤500MB + lección propia tipo VIDEO, crea registro + auditoría `UPLOAD_VIDEO` (acción nueva en el catálogo) en transacción. `estadoSubida` = polling solo del dueño. **No hay paso "confirmar"**: el webhook cierra el ciclo (igual que Cloudflare real). El enlace `Lesson.videoId + duration` lo hace SOLO el worker. En BD solo vive el uid — la URL firmada de reproducción se genera on-demand en Fase 3 (regla #10). 7 tests.
-- **2026-06-12 — Flujo webhook→worker:** `/api/stream/webhook` (apps/web, existe TAMBIÉN en producción — es el endpoint que se registra en Cloudflare) verifica la firma sobre el cuerpo CRUDO antes de parsear, y solo encola `procesar-video` en la cola `media` (handler delgado; reintentos los da BullMQ). Worker: ready → transacción VideoUpload READY + Lesson.videoId/duration + **Course.totalDuration recalculado desde cero** (agregado auto-corregible: borra el desfase aunque otras lecciones hayan cambiado; nota: eliminar lecciones no lo recalcula hasta el siguiente video) + Notification `VIDEO_LISTO` + borrar de Stream el video reemplazado (best-effort); error/lección desaparecida → ERROR + eliminar objeto + `DELETE_FILE` automático + `VIDEO_RECHAZADO`. Idempotente si ya no está PENDING. `encolarProcesamientoVideo` se exporta de `@amatla/api` (solo arrastra bullmq/ioredis, no Fastify). 6 tests.
-- **2026-06-12 — UI video:** `SubirVideo` (compacto, ícono MonitorUp) en filas de lección VIDEO: PUT directo del navegador → polling 2s (máx ~3 min — los videos tardan más que un PDF). Indicador `MonitorPlay` + duración `mm:ss` cuando `tieneVideo` (`secciones.listar` ahora lo expone). Verificación e2e real: firma alterada → 403; MP4 sintético (ftyp+mvhd, 754s) → READY, lección enlazada, totalDuration 5254 recalculado, notificación + auditoría en BD; webhook con firma falsa → 401; texto plano disfrazado de .mp4 → ERROR `ESTADO_STREAM:error` + objeto borrado del disco + lección intacta. Total tests del repo: 137 (115 + 22 nuevos).
-- **2026-06-12 — Env Stream:** `STREAM_LOCAL_DIR/PUBLIC_URL/SIGNING_SECRET/WEBHOOK_SECRET` en `@amatla/config` y `.env.example` (defaults de desarrollo; el webhook secret de prod será el registrado en Cloudflare).
-- **2026-06-12 — Almacén mock de R2 (`@amatla/storage`):** paquete nuevo con interfaz `Almacen` e implementación `AlmacenLocal`: objetos en disco + URLs "prefirmadas" HMAC-SHA256. La firma de PUT amarra key + tamaño exacto + content-type + expiración; la de GET, key + expiración (TTL lectura 30 min — regla de seguridad #10). Keys validadas contra path traversal (regex + resolve dentro de la raíz). El endpoint HTTP del mock es `/api/almacen-dev/[...key]` en apps/web (PUT/GET verifican firma; 404 en producción). Directorio raíz: `<raíz del monorepo>/.almacen-dev` (gitignoreado) — se localiza subiendo desde cwd hasta encontrar `turbo.json` porque web/api/worker corren con cwd distintos. Cuando lleguen credenciales de Cloudflare se agrega `AlmacenR2` con la misma interfaz sin tocar consumidores. 13 tests.
-- **2026-06-12 — Router `archivos`:** `solicitarSubida` (valida extensión/MIME/tamaño por propósito + coherencia ext↔MIME + ownership, crea `FileUpload` PENDING + auditoría `UPLOAD_FILE` en transacción, devuelve URL firmada), `confirmarSubida` (verifica que el objeto exista con el tamaño EXACTO declarado y encola el escaneo), `estadoSubida` (polling; solo el dueño). Reglas: THUMBNAIL_CURSO jpg/jpeg/png ≤10MB; PDF_LECCION pdf ≤50MB (y la lección debe ser tipo PDF). Migración `20260612145913_add_fileupload_purpose`: columnas `purpose`/`targetId` en FileUpload — **el enlace del recurso (Course.thumbnail / Lesson.fileKey) lo hace SOLO el worker tras CLEAN**, nunca el cliente ni el resolver. `leccionPropia` ahora se exporta. 10 tests.
-- **2026-06-12 — Worker media (BullMQ):** cola `media`, job `escanear-archivo` (attempts 3, backoff exponencial). Pipeline: leer del almacén → magic bytes con `file-type` (MIME real ≠ declarado → ERROR `MIME_NO_COINCIDE:*` + eliminar) → clamd INSTREAM por TCP (cliente propio de ~60 líneas en `clamav.ts`, sin dependencias) → CLEAN: transacción que actualiza FileUpload y enlaza thumbnail/fileKey + Notification `ARCHIVO_LISTO` + borra el archivo reemplazado (best-effort); INFECTED: elimina objeto, Notification `ARCHIVO_RECHAZADO` al uploader + `ARCHIVO_INFECTADO` a SUPER_ADMINs + AuditLog `DELETE_FILE` (`automatico: true`). Idempotente ante reintentos (no reprocesa si ya no está PENDING); objetivo eliminado durante el escaneo → ERROR `OBJETIVO_INEXISTENTE`. El escáner se inyecta (DI) para tests; EICAR real verificado contra el clamd del contenedor. 11 tests. Arrancar en dev: `npm run dev -w @amatla/worker-media` (nuevo `workers/media/.env` gitignoreado).
-- **2026-06-12 — GOTCHA bullmq/ioredis:** bullmq fija `ioredis@5.10.1` EXACTO; declarar otra versión duplica el paquete anidado y rompe los tipos de `connection` (error TS larguísimo de AbstractConnector). Mantener `"ioredis": "5.10.1"` sin caret en api y worker, alineado con bullmq.
-- **2026-06-12 — Límite de clamd:** el contenedor usa `StreamMaxLength` default (25MB) — PDFs de 25–50MB darán ERROR de escaneo aunque la regla permita 50MB. Pendiente: clamd.conf custom (o ajustar el límite) al configurar la infra real.
-- **2026-06-12 — UI de subida:** componente cliente `SubirArchivo` (normal y `compacto`) con fases subiendo → escaneando → listo/rechazado; PUT directo del navegador a la URL firmada (el archivo NUNCA pasa por server actions), polling cada 2s (máx ~90s, con aviso de revisar el worker si se agota). Al quedar CLEAN hace `router.refresh()`. Thumbnail en `/instructor/cursos/[id]/editar` (preview con `<img>` y URL firmada — no `next/image`, las URLs expiran); clip compacto en filas de lección PDF con indicador "PDF cargado". `secciones.listar` expone `tieneArchivo`; `cursos.obtener` expone `thumbnailUrl` firmada on-demand (nunca se guarda la URL, solo la key).
-- **2026-06-12 — Verificación e2e local del pipeline:** via Fastify (header `x-dev-user-id`) + curl: firma alterada → 403; PUT legítimo → 200; worker + clamd reales → CLEAN, thumbnail enlazado, notificación creada; GET firmado → 200 image/png, sin firma → 403; PNG disfrazado de `.pdf` → ERROR `MIME_NO_COINCIDE:image/png` + objeto eliminado del disco + sin enlace; PDF real → CLEAN + `fileKey` enlazado. Páginas verificadas con cookie `dev-session-instructor`. Total tests del repo: 115 (81 + 34 nuevos).
-- **2026-06-12 — npm audit:** ahora 3 vulnerabilidades moderadas (eran 2) tras instalar bullmq/file-type — sigue pendiente para la tarea de security-scan.
-- **2026-06-11 — Scaffolding:** Monorepo creado manualmente (no `create-turbo`) para respetar la estructura exacta del prompt maestro: `apps/`, `packages/{api,db,crypto,ai-safety,shared,ui,config}`, `workers/{media,ai}`, `tests/{integration,e2e,load}`, `.github/workflows/`.
-- **2026-06-11 — Workspaces:** npm workspaces (`apps/*`, `packages/*`, `workers/*`) con scope `@amatla/*`. Turborepo 2.x (clave `tasks` en `turbo.json`).
-- **2026-06-11 — TypeScript:** Configuración estricta centralizada en `@amatla/config` (`tsconfig.base.json` con `strict`, `noUncheckedIndexedAccess`; variantes `node` y `nextjs`). Todos los paquetes extienden de ahí.
-- **2026-06-11 — Stubs:** Los paquetes `crypto`, `ai-safety`, `db`, `api`, `ui` y los workers son stubs compilables con constantes `*_READY = false`; se implementan en sus tareas respectivas. `shared` ya exporta roles, timezone y paleta de marca.
-- **2026-06-11 — Verificación:** `npx turbo run build type-check` → 16/16 tareas exitosas (Node 24 local, engines `>=22`).
-- **2026-06-11 — Pendiente git:** El directorio está dentro de un repo git que abarca todo el home del usuario; falta decidir si se hace `git init` propio del proyecto antes del primer commit.
-- **2026-06-11 — Docker Compose:** 4 servicios definidos y verificados en local: `postgres:16-alpine` (5432, healthy, credenciales de `.env.example`), `redis:7-alpine` (6379, AOF habilitado para BullMQ), `dpage/pgadmin4:8` (puerto 5050, login `admin@amatla.dev` / `amatla_dev`), `clamav/clamav:1.4` (clamd TCP 3310, healthy — el worker de media se conectará por TCP en vez de CLI local). Volúmenes nombrados para persistencia.
-- **2026-06-11 — Fix pgAdmin:** pgAdmin valida el TLD del correo por defecto y rechaza dominios `.local`; se usó `admin@amatla.dev`.
-- **2026-06-11 — Schema Prisma:** 15 modelos + 3 enums (`Role`, `CourseStatus`, `LessonType`) en `packages/db/prisma/schema.prisma`. Migración `20260611225516_init` aplicada en local. Prisma **5.22** (el stack fija Prisma 5; existe v7 pero implica major upgrade — no adoptar sin decisión explícita).
-- **2026-06-11 — Decisiones de schema:** Relaciones nombradas para múltiples FKs a `User` (`EnrollmentsAssigned`, `ModuleAccessGranted`, `ClinicalNotesCreated`). Únicos: `Enrollment(studentId, courseId)`, `ModuleAccess(enrollmentId, sectionId)`, `Progress(enrollmentId, lessonId)`. `onDelete: Cascade` solo en contenido estructural (Section→Course, Lesson→Section, Progress, ModuleAccess, Comment, Notification); datos clínicos y auditoría NUNCA en cascada. `order` de Section/Lesson indexado pero no único (permite reordenamiento drag & drop sin conflictos transitorios).
-- **2026-06-11 — Cliente Prisma:** singleton en `@amatla/db` (`globalThis` para hot-reload de Next.js), re-exporta tipos de `@prisma/client`. Prisma CLI requiere ejecutarse desde `packages/db` (ahí vive su `.env` con `DATABASE_URL`, gitignoreado).
-- **2026-06-11 — Backend Fastify+tRPC:** `@amatla/api` con tRPC **v11** sobre Fastify 5. Seguridad activa: helmet (CSP `default-src 'none'`, HSTS 1 año, X-Frame-Options DENY), CORS por env `CORS_ORIGINS` (default `http://localhost:3000`), rate-limit 100 req/min/IP, `trustProxy: true`. Endpoint tRPC en `/trpc`, puerto por env `PORT` (default 4000).
-- **2026-06-11 — RBAC (4 niveles):** `publicProcedure`, `protectedProcedure`, `instructorProcedure`, `adminProcedure` en `packages/api/src/trpc.ts`. SUPER_ADMIN hereda permisos de los demás roles. Cuentas con `isActive: false` no obtienen sesión. Verificado end-to-end: 401 sin sesión, 403 STUDENT→userCount, OK SUPER_ADMIN.
-- **2026-06-11 — Auth temporal:** mientras llega NextAuth v5, el contexto acepta header `x-dev-user-id` (SOLO con `NODE_ENV !== 'production'`) para suplantar usuarios en pruebas de RBAC. Reemplazar en la tarea de Auth. Usuarios de prueba en BD local: `dev-student-1` (STUDENT), `dev-admin-1` (SUPER_ADMIN).
-- **2026-06-11 — Nota Windows:** el server escucha en `0.0.0.0` (IPv4); en Windows `localhost` resuelve primero a `::1` (IPv6) — usar `127.0.0.1` para probar con curl/Invoke-RestMethod.
-- **2026-06-11 — Web (apps/web):** Next.js **15.5** + React 19 + Tailwind **3.4** (no v4 — estabilidad con shadcn/ui). Paleta DBT.Amatla como CSS custom properties en `globals.css`, mapeada en `tailwind.config.ts` (`brand.*`, `rounded-card` 12px, `shadow-card`). Fuentes `next/font`: Inter (`--font-inter`, UI) y Lora (`--font-lora`, títulos serif). UI 100% en español de México.
-- **2026-06-11 — Shell de layout:** `AppShell` (client component solo por estado del menú móvil) con `Sidebar` (verde noche, nav activa en teal, colapsable < 768px con overlay) y `Header` (barra de progreso naranja mockeada + avatar). Páginas siguen siendo Server Components. Dashboard placeholder con cards de cursos mock, sesión en vivo de miércoles y aviso del asistente IA (Fase 5).
-- **2026-06-11 — Fix lockfiles:** hay un `package-lock.json` suelto en `C:\Users\cealg` que confundía la raíz de Next; se fijó `outputFileTracingRoot` a la raíz del monorepo en `next.config.ts`.
-- **2026-06-11 — Pendiente npm audit:** 2 vulnerabilidades moderadas reportadas tras instalar Next — revisar `npm audit` en la tarea de CI/security-scan.
-- **2026-06-11 — Crypto implementado:** AES-256-GCM en `@amatla/crypto` con formato `iv:authTag:ciphertext` (hex). Mejora sobre el prompt: derivación de clave **perezosa con caché** (scrypt corre una sola vez, el módulo puede importarse antes de cargar el env, y `__resetKeyCache()` permite tests/rotación de secretos). `decryptField` devuelve `null` ante datos corruptos; `decrypt` lanza ante authTag inválido. 13 tests Vitest: roundtrip, acentos/unicode/emoji, textos largos, string vacío, IV aleatorio, detección de manipulación, formatos inválidos, env faltante.
-- **2026-06-11 — Vitest 3:** se instaló vitest **3.2.6** (no 2.x — la 2.1.x traía una vulnerabilidad CRÍTICA de RCE vía su API en watch mode, CVE-2025-24964). Tests excluidos del build (`exclude: src/**/*.test.ts` en tsconfig) para que no lleguen a `dist/`.
-- **2026-06-11 — Lecciones:** router `lecciones` (crear/actualizar/eliminar/reordenar) con ownership de 3 niveles via `leccionPropia`. Tipos limitados a VIDEO/PDF/TEXT en el CRUD (QUIZ existe en el enum pero llega en fase posterior). `actualizar` soporta `esPreview`. `secciones.listar` ahora devuelve las lecciones completas (array) en vez de solo el conteo. UI: secciones expandibles (chevron o clic en el título), lista anidada con DndContext propio por sección, ícono por tipo, badge Preview naranja, alta inline con selector de tipo. **Decisión pendiente:** las lecciones TEXT no tienen campo de contenido en el schema (el prompt maestro no lo define) — resolver al implementar el editor de contenido (¿`content @db.Text` en Lesson o archivo en R2?). 6 tests nuevos — 81 totales.
-- **2026-06-11 — Secciones + dnd:** router `secciones` (listar/crear/actualizar/eliminar/reordenar) — ownership siempre via curso padre (`seccionPropia` incluye `course.instructorId`); `reordenar` exige que los ids recibidos sean EXACTAMENTE el conjunto actual (BAD_REQUEST si no); nuevas acciones de auditoría `*_SECTION`/`REORDER_SECTIONS`. UI en `/instructor/cursos/[id]`: dnd-kit con actualización optimista + rollback si el server falla, renombrado inline (Enter/Escape), eliminación con confirm (advierte lecciones en cascada). 8 tests de integración. Total tests del repo: 75.
-- **2026-06-11 — CRUD curso:** `cursos.crear/actualizar/obtener` con helper `cursoPropio()` (instructor solo lo suyo; SUPER_ADMIN todo; NOT_FOUND sin revelar existencia). Curso+auditoría en una transacción. Formulario compartido (`CursoForm` con useActionState, errores Zod parseados a texto legible). 6 tests de integración del router. Guard `exigirInstructor()` en `lib/guardia.ts`.
-- **2026-06-11 — Dev login:** `/api/dev-login?como=instructora|estudiante|admin` (bloqueado en producción) crea/renueva la sesión en BD y pone la cookie httpOnly — permite entrar desde el navegador sin Resend/Google.
-- **2026-06-11 — GOTCHA dist de api:** la web consume `@amatla/api` COMPILADO (dist). Tras cambiar el router hay que `turbo run build --filter=@amatla/api` o el dev server de Next sigue con la versión vieja (síntoma: "procedure not found" → mi catch lo volvía 404). Mejora pendiente: entry separado o transpilePackages para DX. Además el entry raíz ya NO re-exporta `buildServer` (la web no debe arrastrar Fastify).
-- **2026-06-11 — Git:** repo propio inicializado en la raíz del proyecto (rama `main`). Commits: `2fb9e1d` (Fase 1), `0b88f60` (dashboard instructor). Falta crear remote en GitHub. Pendiente menor: `.gitattributes` para normalizar CRLF/LF. (`tsbuildinfo` y `.claude/scheduled_tasks.lock` ya gitignoreados — 2026-06-12.)
-- **2026-06-11 — Patrón tRPC server-side:** los Server Components llaman procedures via `createCaller(createContextInner(...))` (sin HTTP) construyendo el contexto desde la sesión NextAuth — `apps/web/src/lib/api-server.ts`. El server Fastify queda para clientes externos/móvil. Contexto refactorizado: `requestMeta { ip, userAgent }` en vez de exponer req/res; `auditFromRequest` lo usa.
-- **2026-06-11 — Dashboard instructor:** `cursos.misCursos` con ownership (`where instructorId = ctx.user.id`), métricas via `_count`. Página `/instructor` con doble guardia (layout exige sesión + página exige rol INSTRUCTOR/SUPER_ADMIN — verificado: STUDENT → redirect a `/`). Sidebar muestra "Panel de instructor" solo a esos roles. Tipo `ApiCaller` exportado para evitar TS2742.
-- **2026-06-11 — SECURITY FIX sesión:** el callback `session` de NextAuth devolvía el objeto del adapter tal cual → **filtraba `sessionToken` y la fila completa de User** en `/api/auth/session` (anulaba httpOnly). Ahora devuelve objeto nuevo solo con `{ expires, user: {id, name, email, image, role} }`. Verificado.
-- **2026-06-11 — Trampas de verificación local:** (1) Windows PowerShell 5.1 **descarta el header Cookie** en Invoke-WebRequest → usar `curl -b` para probar sesiones. (2) `next start` local requiere `AUTH_TRUST_HOST=true` (ya en .env.local). (3) React inserta `<!-- -->` entre nodos de texto SSR — grep de textos compuestos falla aunque se rendericen bien. (4) Seed reutilizable: `packages/db/seed-dev.sql` (idempotente) con sesiones de prueba `dev-session-instructor`/`dev-session-student` para curl.
-- **2026-06-11 — CI básico:** `.github/workflows/ci-web.yml` — en cada PR/push a main: Node 22 + npm ci → `prisma migrate deploy` contra service container postgres:16 → `turbo run build type-check lint test`. Secretos dummy de CI declarados en el workflow (nunca productivos). Pipeline validado localmente: 34/34 tareas. **Pendientes:** ESLint real (los scripts lint son placeholders), workflows de deploy/E2E/security-scan (Fase 6), y **crear el repo GitHub** (git init propio del proyecto + remote) para activar el CI.
-- **2026-06-11 — Nota Windows/Prisma:** `prisma generate` falla con EPERM si el dev server de Next está corriendo (bloquea el DLL del query engine). Detener `next dev` antes de regenerar el cliente. No afecta CI (Linux).
-- **2026-06-11 — NextAuth v5:** sesiones **en BD** (no JWT) — invalidar tokens al cambiar rol/desactivar = borrar filas de `Session`. Migración `add_nextauth_models` (Account/Session/VerificationToken; `User.name` ahora **opcional** — el alta por Magic Link crea usuario solo con email; `avatar`→`image` por convención del adapter). Callbacks: `signIn` bloquea cuentas `isActive: false`; `session` agrega id+rol leídos de BD. Páginas: `/iniciar-sesion` (Magic Link + Google, panel de marca con Ψ) y `/iniciar-sesion/enlace-enviado`. Rutas protegidas via layout del grupo `(plataforma)` (no middleware — sesiones de BD no corren en edge). Logout en sidebar via server action. Workaround TS2742 de next-auth beta: exports anotados con `NextAuthResult`.
-- **2026-06-11 — Credenciales pendientes:** `apps/web/.env.local` (gitignoreado) tiene AUTH_SECRET generado + DATABASE_URL; **faltan** `RESEND_API_KEY` y `GOOGLE_CLIENT_ID/SECRET` reales del cliente — sin ellas el login renderiza pero el envío de correo/OAuth fallará. Verificado: `/` sin sesión → 307 a `/iniciar-sesion`; providers endpoint lista resend+google.
-- **2026-06-11 — Pendiente auth↔API:** el contexto tRPC sigue con `x-dev-user-id` (solo dev); conectar la sesión NextAuth al backend cuando se monte el cliente tRPC en la web. Refresh tokens JWT para móvil → Fase 3.
-- **2026-06-11 — AuditLog centralizado:** `auditLog()` + `auditResource('Modelo', id)` en `@amatla/db` (lo comparten api y workers) con catálogo cerrado `AUDIT_ACTIONS` (20 acciones tipadas — nunca strings sueltos). Acepta cliente transaccional: dentro de `prisma.$transaction` el registro participa del **rollback conjunto** (verificado con test). NO captura errores — si la auditoría falla, la operación se entera. Wrapper `auditFromRequest(ctx, ...)` en `@amatla/api` completa userId/IP/user-agent desde el contexto; usar SIEMPRE el wrapper en resolvers. Inmutabilidad por convención (solo INSERT desde la app) — **pendiente**: trigger de Postgres que bloquee UPDATE/DELETE a nivel BD. 6 tests de integración contra el Postgres local (vitest con `fileParallelism: false`).
-- **2026-06-11 — Env tipado:** `loadServerEnv()` en `@amatla/config` (ahora paquete compilable, `main: dist/env.js`; los tsconfig se siguen importando por ruta directa). Schema Zod con defaults (PORT 4000, REDIS_URL local, R2_BUCKET), `DATABASE_URL` siempre obligatoria, y `superRefine` que vuelve obligatorios `ENCRYPTION_MASTER_KEY`/`ENCRYPTION_SALT`/`AUTH_SECRET` **solo en producción**. Error de arranque legible (lista variable+motivo). Caché con `__resetEnvCache()` para tests. Integrado en `@amatla/api` (server.ts y start.ts ya no leen `process.env` directo).
-- **2026-06-11 — DX api:** scripts `dev`/`start` de la api usan `--env-file-if-exists=.env` (Node 22.9+); `packages/api/.env` local con DATABASE_URL/REDIS/CORS (gitignoreado). Verificado: arranca con .env y `health.check` responde ok; sin DATABASE_URL falla al arrancar con mensaje claro.
-- **2026-06-11 — Skill de diseño:** instalada la skill oficial `frontend-design` de Anthropic en `.claude/skills/frontend-design` (disponible como skill de proyecto en próximas sesiones).
-- **2026-06-11 — Rediseño portal estudiante:** página de inicio estilo Udemy adaptada al modelo clínico (los cursos se asignan, no se venden). Componentes en `apps/web/src/components/cursos/`: `HeroContinuar` (retomar lección con **anillo de progreso que "respira"** — firma de la página, animación 5s con `prefers-reduced-motion` respetado), `Catalogo` (búsqueda + pills de categoría funcionando client-side sobre mocks en `src/lib/cursos-mock.ts`), `CursoCard` (miniaturas generativas CSS por categoría con Ψ serif como marca de agua, rating con estrellas, lecciones/duración, barra de progreso o badge de completado), `SesionesVivo` (bloques de fecha estilo calendario, miércoles) y `LineaAyuda` (franja tenue con Línea de la Vida — nunca modal). Datos mock se reemplazan por tRPC en Fase 2/3.
-- **2026-06-11 — AI Safety implementado:** `@amatla/ai-safety` exporta `classifyMessage` (crisis > consejo médico en prioridad), `CRISIS_RESPONSE` / `MEDICAL_ADVICE_RESPONSE` y `MANDATORY_SYSTEM_PROMPT` (obligatorio en TODA llamada a Claude). Mejora sobre el prompt: el texto se **normaliza** (NFD sin diacríticos, minúsculas) antes de evaluar patrones — detecta "ideacion" e "IDEACIÓN" por igual; los patrones se escriben sin acentos. Se ampliaron patrones de crisis (`me quiero matar`, `matarme`, `acabar con mi vida`). **La lista NO es exhaustiva: validar y ampliar con el cliente clínico.** 32 tests Vitest.
+
+### ADR — 2026-06-13 — Asignación de curso completo (Fase 4, tarea 4.1)
+Router nuevo `inscripciones` (`packages/api/src/routers/inscripciones.ts`),
+montado en `root.ts`. **Reutiliza el catálogo existente:** `ASSIGN_COURSE` y
+`REVOKE_ENROLLMENT` YA estaban en `AUDIT_ACTIONS` (no se inventaron acciones).
+Procedures (`instructorProcedure`, ownership via `cursoPropio` → SUPER_ADMIN
+sobre cualquiera; NOT_FOUND no revela cursos ajenos):
+- `estudiantesCurso({ cursoId })` → `{ asignados, disponibles }` en una llamada.
+  `disponibles` = usuarios `role: STUDENT, isActive: true` que NO están inscritos
+  (decisión: el instructor puede asignar a cualquier STUDENT activo — MVP simple,
+  documentado). Nombre mostrado = `name ?? email` (el alta por Magic Link puede no
+  tener nombre).
+- `asignar({ cursoId, studentId })` → valida que el destinatario sea STUDENT
+  activo (no confiar en el cliente), crea `Enrollment` (`assignedBy = ctx.user.id`)
+  + audit `ASSIGN_COURSE` en transacción. El `@@unique([studentId, courseId])`
+  captura la doble inscripción (P2002 → BAD_REQUEST legible).
+- `revocar({ cursoId, studentId })` → borra el `Enrollment` + audit
+  `REVOKE_ENROLLMENT`. **OJO (documentado en UI con confirm):** el cascade del
+  schema borra también progreso/notas/ModuleAccess de ese estudiante en el curso.
+**Curso completo = Enrollment SIN filas de ModuleAccess** (la regla "sin filas =
+acceso total" ya existía en `estudiante.ts`); la asignación granular por secciones
+queda para después (tarea Fase 4 extendida). **NO hizo falta migración** —
+`Enrollment` ya existía. UI: página server `/instructor/cursos/[id]/estudiantes`
+(`exigirInstructor` + `cursos.obtener` para 404 de ownership) + client
+`GestionEstudiantes` (selector de disponibles + lista de asignados con "Quitar"
+confirmado); server actions en `acciones/inscripciones.ts`; enlace "Estudiantes"
+añadido en la estructura del curso. Verificado e2e (resuelve la queja "publico un
+curso y no aparece"): asignar `curso-dev-2` → el estudiante lo ve en su dashboard
+de inmediato; revocar → desaparece; doble asignación → BAD_REQUEST; instructor
+ajeno → NOT_FOUND. 8 tests nuevos — **185 totales**.
+
+### ADR — 2026-06-13 — Eliminación del chatbot IA del MVP
+**Contexto:** El prompt maestro v2.0 incluía una Fase 5 completa de IA conversacional
+(chatbot de estudio, resúmenes automáticos, preguntas de repaso generadas por Claude,
+dashboard de tokens, alertas de crisis). El módulo `packages/ai-safety` ya estaba
+scaffolded con `classifyMessage` (32 tests).
+
+**Decisión:** La IA conversacional se mueve a Fase 6 (Post-MVP). No forma parte del
+lanzamiento inicial. El MVP se define como: subida de cursos → consumo de contenido
+→ progreso secuencial → quiz → certificado.
+
+**Motivos:**
+1. Prioridad de lanzamiento: el flujo instructor→estudiante no es demostrable sin asignación
+   (Fase 4 tarea 4.1). La IA es valiosa pero no desbloquea el negocio core.
+2. Complejidad operativa: el chatbot requiere gestión de tokens, costos variables,
+   rate limiting de IA, y el pipeline de seguridad clínica — todo eso DESPUÉS de que
+   la plataforma base funcione bien.
+3. El módulo `packages/ai-safety` se mantiene scaffolded y sus 32 tests siguen en verde.
+   Cuando llegue la Fase 6, estará listo para activar.
+
+**Consecuencias:**
+- La regla #7 del prompt maestro v2.0 ("AI Safety como puerta de entrada — toda llamada
+  a Claude pasa por classifyMessage()") solo aplica a partir de Fase 6.
+- El modelo `AiSession` del schema se mantiene para no romper el schema existente,
+  pero ningún resolver lo usa en el MVP.
+- El worker `workers/ai/` existe como directorio vacío scaffolded — no tiene jobs activos.
+
+---
+
+### ADR — 2026-06-13 — Progreso secuencial de lecciones
+**Decisión:** Una lección está bloqueada si la lección inmediatamente anterior
+(orden-1 en la misma sección, o la última de la sección anterior) no está completada,
+excepto lecciones `isPreview = true` o la primera del curso.
+
+**Dónde se verifica:** En el servidor (`estudiante.leccion`, `estudiante.videoLeccion`),
+no solo en la UI. El estudiante que intente acceder a una lección bloqueada por URL directa
+recibe el mismo NOT_FOUND que una lección que no existe.
+
+**Scrubbing de video limitado:** El reproductor fija el scrubber máximo en
+`max(lastPosition, watchedSeconds)` — el estudiante puede volver a ver partes ya vistas
+pero no saltar hacia adelante de lo que ha visto. `watchedSeconds` nunca retrocede (regla ya
+implementada desde Fase 3).
+
+---
+
+### ADR — 2026-06-13 — Modelo de Quiz
+**Decisión:** Las lecciones tipo QUIZ tienen sus preguntas en la tabla `QuizQuestion`
+(no en un campo JSON). Cada intento del estudiante se guarda en `QuizAttempt`
+(se sobrescribe el anterior del mismo enrollment+lesson — solo se conserva el último).
+
+**passingScore:** campo `Int @default(70)` en la tabla `Lesson` (aplica solo a QUIZ).
+No se creó un modelo separado para configuración de quiz — es suficiente para el MVP.
+
+**Seguridad:** La respuesta correcta (`QuizQuestion.correctOption`) NUNCA se incluye
+en el output de ningún procedure de listado de preguntas para el estudiante hasta
+después del envío del intento. Se verifica en cada procedure del router quiz con
+un tipo de output separado para estudiante vs instructor.
+
+---
+
+### ADR — 2026-06-13 — Qué estudiantes puede asignar un instructor
+**Decisión:** Un instructor puede asignar su curso a cualquier usuario con
+`role: STUDENT` e `isActive: true`. No se filtra por "estudiantes de sus cursos previos"
+ni por ninguna otra relación — todos los STUDENTs activos son asignables.
+
+**Motivo:** MVP. Un filtro más fino (p.ej. solo estudiantes que no tienen ya el curso,
+o que el SUPER_ADMIN aprobó) complica la UI sin beneficio real a esta escala (< 100 alumnos).
+El `@@unique([studentId, courseId])` de Enrollment previene duplicados.
+
+**Pendiente futuro:** Si el negocio crece y el instructor tiene muchos estudiantes de
+otros instructores en la lista, añadir un filtro por "ya tiene al menos un curso conmigo"
+o una búsqueda por nombre/email.
+
+---
+
+### ADR — 2026-06-13 — DIAGNÓSTICO "no se ve nada" + fix thumbnail
+Ver sesión anterior. En resumen: el portal del estudiante solo muestra cursos con
+`Enrollment` (regla de negocio). El único con Enrollment es el del seed. La UI de
+asignación es la tarea 4.1 y es el BLOQUEANTE real del demo e2e. El thumbnail no
+salía porque el worker de media estaba apagado → uploads en PENDING. Fix: `CursoCard`
+ahora muestra el thumbnail real si existe.
+
+---
+
+### ADR — 2026-06-13 — Notas personales por timestamp (primer dato cifrado en prod)
+Modelo `LessonNote` (enrollmentId + lessonId + positionSeconds + body @db.Text [ENCRYPTED]).
+`@amatla/crypto` se estrena en la app real. Ver migración `20260613053901_add_lesson_note`.
+OBLIGATORIO: `ENCRYPTION_MASTER_KEY`/`ENCRYPTION_SALT` en ambos `.env` (api y web).
+
+---
+
+### ADR — 2026-06-12 — Visor PDF
+`Lesson.allowDownload Boolean @default(true)`. `react-pdf@10.4.1` client-only via
+`next/dynamic ssr:false`. Abrir el material = lección completada (dispara en `onLoadSuccess`).
+La URL firmada de 30 min no se puede "desactivar" del todo (el visor necesita leer los bytes)
+— la protección real es la firma + TTL + acceso por Enrollment.
+
+---
+
+### ADR — 2026-06-12 — Reproductor Vidstack
+`@vidstack/react` — el tag `latest` apunta a 0.6 vieja; la versión actual (1.x) está bajo
+el tag `next`. Instalar con versión exacta y `--legacy-peer-deps`. Guardar posición cada 15s
+(solo reproduciendo), flush inmediato en pause/ended. Completar al 80% en el SERVIDOR.
+Renovación de URL 5 min antes de expirar (setTimeout + guardar posición + cambiar src + restaurar).
+
+---
+
+### ADR — 2026-06-11 — Schema Prisma
+15 modelos + 3 enums (Role, CourseStatus, LessonType). Migración `20260611225516_init`.
+Prisma 5.22 (no actualizar a v7 sin decisión explícita). Relaciones nombradas para múltiples
+FKs a User. `onDelete: Cascade` solo en contenido estructural. AuditLog NUNCA en cascada.
+
+---
+
+### ADR — 2026-06-11 — Backend Fastify+tRPC
+tRPC v11 sobre Fastify 5. Helmet CSP `default-src 'none'`, HSTS 1 año, rate-limit 100 req/min.
+RBAC 4 niveles. `x-dev-user-id` en dev para suplantar usuarios (NO en producción).
+
+---
+
+### ADR — 2026-06-11 — GOTCHA dist de api
+La web consume `@amatla/api` COMPILADO. Tras cambiar cualquier router:
+`npx turbo run build --filter=@amatla/api` — o el dev server de Next usa la versión vieja.
+
+---
+
+### ADR — 2026-06-11 — GOTCHA Prisma en Windows
+`prisma generate` falla con EPERM si el dev server de Next está corriendo
+(bloquea el DLL del query engine). Detener `next dev` antes de regenerar.
+
+---
+
+### ADR — 2026-06-11 — GOTCHA curl en Windows
+- PowerShell 5.1 descarta el header Cookie en `Invoke-WebRequest` → usar `curl -b`
+- Body JSON con acentos por `-d` da `FST_ERR_CTP_INVALID_CONTENT_LENGTH` → usar `--data-binary @archivo`
+- URLs en HTML: `&amp;`; en RSC: `&` (o `\u0026`)
+- `git commit -m @'...'@` con comillas dobles rompe el parseo de PowerShell 5.1
+
+---
+
+### ADR — 2026-06-11 — Crypto (AES-256-GCM)
+Derivación de clave perezosa con caché (`__resetKeyCache()` para tests).
+Formato `iv:authTag:ciphertext` (hex). `decryptField` devuelve null ante datos corruptos.
+ENCRYPTION_MASTER_KEY + ENCRYPTION_SALT obligatorios en ambos .env (api y web).
+
+---
+
+### ADR — 2026-06-11 — NextAuth v5 (sesiones en BD)
+Sesiones en BD (no JWT) — invalidar = borrar filas Session. Callback `session` devuelve
+solo `{expires, user: {id, name, email, image, role}}` — no filtra sessionToken.
+`/api/dev-login?como=instructora|estudiante|admin` solo disponible fuera de producción.

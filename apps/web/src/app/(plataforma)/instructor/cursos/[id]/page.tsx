@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { Pencil } from 'lucide-react'
+import { Pencil, Users } from 'lucide-react'
 import { exigirInstructor } from '@/lib/guardia'
 import { apiServer } from '@/lib/api-server'
 import { EstructuraSecciones } from '@/components/instructor/estructura-secciones'
@@ -43,6 +43,13 @@ export default async function EstructuraCursoPage({
           </p>
         </div>
         <div className="flex items-start gap-2">
+          <Link
+            href={`/instructor/cursos/${curso.id}/estudiantes`}
+            className="inline-flex items-center gap-1.5 rounded-full border border-neutral-100 px-4 py-2 text-xs font-semibold text-brand-dark transition-colors hover:border-brand-secondary hover:text-brand-secondary"
+          >
+            <Users size={13} aria-hidden="true" />
+            Estudiantes
+          </Link>
           <Link
             href={`/instructor/cursos/${curso.id}/editar`}
             className="inline-flex items-center gap-1.5 rounded-full border border-neutral-100 px-4 py-2 text-xs font-semibold text-brand-dark transition-colors hover:border-brand-secondary hover:text-brand-secondary"
