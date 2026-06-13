@@ -1,6 +1,6 @@
 # 📌 Estado del Proyecto: Plataforma E-Learning
-- **Última actualización:** 2026-06-13 (sesión 8) — Fase 4: 4.7 (quiz UI estudiante) COMPLETA, en modo orquestador (ejecutor Sonnet implementó, orquestador revisó/verificó/commiteó). 210 tests.
-- **Fase Actual:** Fase 4 (MVP completo) — 4.0–4.7 ✅; siguiente: 4.8 (panel de admin)
+- **Última actualización:** 2026-06-13 (sesión 8) — Fase 4: 4.8 (panel de admin: usuarios, rol, activar/desactivar) COMPLETA, en modo orquestador (2 ejecutores Sonnet: backend+tests y frontend; orquestador revisó/verificó/commiteó). 223 tests.
+- **Fase Actual:** Fase 4 (MVP completo) — 4.0–4.8 ✅; siguiente: 4.9 (vista de progreso del estudiante para el instructor — última del MVP)
 - **Objetivo del Sprint:** Cerrar el MVP: asignación, progreso secuencial, quiz, editor TEXT, panel admin, progreso por estudiante (certificado/email/granular/móvil DIFERIDOS)
 
 ## 📋 Roadmap Global (v3.0 — MVP sin chatbot IA)
@@ -33,7 +33,7 @@
 - [x] **4.5** Quiz backend: router quiz, procedures CRUD preguntas + enviar intento ✅ (2026-06-13)
 - [x] **4.6** Quiz UI instructor: gestión de preguntas + passingScore ✅ (2026-06-13)
 - [x] **4.7** Quiz UI estudiante: formulario + feedback + reintento ✅ (2026-06-13)
-- [ ] **4.8** Panel de admin: tabla de usuarios, cambiar rol, activar/desactivar
+- [x] **4.8** Panel de admin: tabla de usuarios, cambiar rol, activar/desactivar ✅ (2026-06-13)
 - [ ] **4.9** Vista de progreso del estudiante para el instructor (lección por lección)
 
 > ⏸️ **DIFERIDO — fuera del MVP actual (no trabajar hasta nuevo aviso, decisión usuario 2026-06-13):**
@@ -71,6 +71,28 @@
 - [x] Preview de lección + publicar/archivar con validación
 
 ## 🧠 Memoria de Decisiones (ADRs)
+
+### ADR — 2026-06-13 — Panel de admin (Fase 4, tarea 4.8) — modo orquestador (2 ejecutores)
+**Backend** — router `admin` (`packages/api/src/routers/admin.ts`, montado en `root.ts`), TODO
+con `adminProcedure` (solo SUPER_ADMIN): `usuarios({ busqueda? })` (lista con filtro por
+nombre/email insensible); `cambiarRol({ userId, rol })`; `cambiarEstado({ userId, activo })`.
+**Seguridad:** ambas mutaciones invalidan la sesión del afectado borrando sus filas `Session`
+(cambio de rol SIEMPRE; al desactivar) → el acceso se corta de inmediato (regla #1/#5); se
+PROHÍBE actuar sobre la propia cuenta (BAD_REQUEST, evita que un admin se bloquee/degrade);
+NOT_FOUND si el usuario no existe; auditoría `CHANGE_ROLE`/`ACTIVATE_USER`/`DEACTIVATE_USER`
+(ya estaban en el catálogo) en la misma transacción que el update + borrado de sesión. 13 tests
+nuevos (RBAC FORBIDDEN/UNAUTHORIZED, borrado de Session verificado con count 0, auto-protección,
+NOT_FOUND). **Frontend** — `exigirAdmin()` en `guardia.ts`; página `/admin/usuarios` (server,
+`exigirAdmin` + `admin.usuarios`); `components/admin/gestion-usuarios.tsx` (client: búsqueda
+local, tabla en desktop / tarjetas en móvil, `<select>` de rol y botón activar/desactivar con
+`window.confirm` —avisan que cierran la sesión—, estado optimista con reversión, la FILA PROPIA
+va deshabilitada y marcada "(tú)"); `acciones/admin.ts`; entrada "Administración" en el sidebar
+solo para SUPER_ADMIN. **Verificación:** 122 tests API (10 archivos) + type-check web + smoke
+HTTP (admin ve la tabla 200; un STUDENT es redirigido por `exigirAdmin` y NO recibe la tabla;
+backend `adminProcedure` lo bloquea también → defensa en profundidad). **223 tests** en total.
+**GOTCHA aplicado:** el `turbo build` de la API falla con EPERM (dev server bloquea el DLL de
+Prisma en `prisma generate` de `@amatla/db`); se reconstruyó el dist con `npm run build -w
+@amatla/api` (solo `tsc`, sin `prisma generate`) para que la web viera el router `admin`.
 
 ### ADR — 2026-06-13 — Fix "InvalidPDFException: Invalid PDF structure" (seed de media)
 **Síntoma:** abrir la lección PDF del seed (`lec-dev-3`) lanzaba en consola

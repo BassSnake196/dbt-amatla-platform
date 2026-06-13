@@ -9,3 +9,9 @@ export async function exigirInstructor() {
   if (rol !== 'INSTRUCTOR' && rol !== 'SUPER_ADMIN') redirect('/')
   return session!
 }
+
+export async function exigirAdmin() {
+  const session = await auth()
+  if (session?.user?.role !== 'SUPER_ADMIN') redirect('/')
+  return session!
+}

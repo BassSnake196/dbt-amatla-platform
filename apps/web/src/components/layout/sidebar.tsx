@@ -2,7 +2,17 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { BookOpen, Calendar, Bell, Home, LayoutDashboard, LogOut, Settings, X } from 'lucide-react'
+import {
+  BookOpen,
+  Calendar,
+  Bell,
+  Home,
+  LayoutDashboard,
+  LogOut,
+  Settings,
+  ShieldCheck,
+  X,
+} from 'lucide-react'
 import { cerrarSesion } from '@/acciones/auth'
 
 const NAV_ITEMS = [
@@ -16,6 +26,9 @@ const NAV_ITEMS = [
 // Entrada extra solo para instructores y administradores
 const NAV_INSTRUCTOR = { href: '/instructor', label: 'Panel de instructor', icon: LayoutDashboard }
 
+// Entrada extra solo para administradores
+const NAV_ADMIN = { href: '/admin/usuarios', label: 'Administración', icon: ShieldCheck }
+
 interface SidebarProps {
   open: boolean
   rol: string
@@ -25,7 +38,11 @@ interface SidebarProps {
 export function Sidebar({ open, rol, onClose }: SidebarProps) {
   const pathname = usePathname()
   const items =
-    rol === 'INSTRUCTOR' || rol === 'SUPER_ADMIN' ? [...NAV_ITEMS, NAV_INSTRUCTOR] : NAV_ITEMS
+    rol === 'SUPER_ADMIN'
+      ? [...NAV_ITEMS, NAV_INSTRUCTOR, NAV_ADMIN]
+      : rol === 'INSTRUCTOR'
+        ? [...NAV_ITEMS, NAV_INSTRUCTOR]
+        : NAV_ITEMS
 
   return (
     <>
