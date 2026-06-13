@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useState, useTransition } from 'react'
 import {
   DndContext,
@@ -358,6 +359,16 @@ function LeccionFila({
                 etiqueta={leccion.tieneArchivo ? `Reemplazar PDF de ${leccion.titulo}` : `Subir PDF a ${leccion.titulo}`}
               />
             </>
+          )}
+          {leccion.tipo === 'TEXT' && (
+            <Link
+              href={`/instructor/cursos/${cursoId}/lecciones/${leccion.id}/editar`}
+              className="rounded p-1 text-neutral-900/40 hover:text-brand-secondary"
+              aria-label={`Editar contenido de ${leccion.titulo}`}
+              title={`Editar contenido de ${leccion.titulo}`}
+            >
+              <Pencil size={13} />
+            </Link>
           )}
           <a
             href={`/instructor/cursos/${cursoId}/lecciones/${leccion.id}/vista-previa`}

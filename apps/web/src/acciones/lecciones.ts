@@ -67,6 +67,21 @@ export async function eliminarLeccionAction(
   }
 }
 
+export async function guardarContenidoLeccionAction(
+  cursoId: string,
+  leccionId: string,
+  contenido: string,
+): Promise<ResultadoLeccion> {
+  try {
+    const api = await apiServer()
+    await api.lecciones.guardarContenido({ id: leccionId, contenido })
+    revalidatePath(`/instructor/cursos/${cursoId}`)
+    return { error: null }
+  } catch (error) {
+    return { error: mensajeLegible(error) }
+  }
+}
+
 export async function alternarDescargaLeccionAction(
   cursoId: string,
   leccionId: string,

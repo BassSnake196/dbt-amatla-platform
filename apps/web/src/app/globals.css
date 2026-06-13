@@ -41,3 +41,61 @@ body {
     animation: none;
   }
 }
+
+/* Contenido enriquecido de lecciones TEXT (editor Tiptap y vista del estudiante).
+   El HTML viene sanitizado server-side; aquí solo se le da estilo. */
+.contenido-rico {
+  color: var(--color-neutral-900);
+  line-height: 1.7;
+}
+.contenido-rico h2 {
+  font-family: var(--font-lora), serif;
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--color-brand-dark);
+  margin: 1.4em 0 0.5em;
+}
+.contenido-rico h3 {
+  font-family: var(--font-lora), serif;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--color-brand-dark);
+  margin: 1.2em 0 0.4em;
+}
+.contenido-rico p {
+  margin: 0.7em 0;
+}
+.contenido-rico ul,
+.contenido-rico ol {
+  margin: 0.7em 0;
+  padding-left: 1.5em;
+}
+.contenido-rico ul {
+  list-style: disc;
+}
+.contenido-rico ol {
+  list-style: decimal;
+}
+.contenido-rico li {
+  margin: 0.25em 0;
+}
+.contenido-rico a {
+  color: var(--color-brand-secondary);
+  text-decoration: underline;
+}
+.contenido-rico blockquote {
+  border-left: 3px solid var(--color-brand-primary);
+  padding-left: 1em;
+  margin: 0.9em 0;
+  color: rgba(28, 28, 26, 0.7);
+  font-style: italic;
+}
+.contenido-rico strong {
+  font-weight: 600;
+}
+.contenido-rico code {
+  background: var(--color-neutral-100);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  font-size: 0.9em;
+}

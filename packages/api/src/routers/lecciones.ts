@@ -9,6 +9,7 @@ import { router, instructorProcedure } from '../trpc.js'
 import { auditFromRequest, auditResource } from '../audit.js'
 import { obtenerAlmacen } from '../almacen.js'
 import { obtenerStream } from '../stream.js'
+import { sanitizarHtml } from '../sanitize.js'
 import { seccionPropia } from './secciones.js'
 import type { Context, SessionUser } from '../context.js'
 
@@ -141,6 +142,43 @@ export const leccionesRouter = router({
           { campos: Object.keys(input).filter((k) => k !== 'id') },
           tx,
         )
+      })
+      return { id: input.id }
+    }),
+
+  /** Contenido HTML de una lección TEXT propia — para cargar el editor. */
+  obtenerContenido: instructorProcedure
+    .input(z.object({ id: z.string() }))
+    .output(z.object({ id: z.string(), titulo: z.string(), contenido: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const leccion = await leccionPropia(ctx, input.id)
+      if (leccion.type !== 'TEXT') {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Esta lección no es de tipo texto.' })
+      }
+      return { id: leccion.id, titulo: leccion.title, contenido: leccion.content ?? '' }
+    }),
+
+  /**
+   * Guardar el contenido HTML de una lección TEXT. El HTML se sanitiza
+   * server-side (regla #13) ANTES de persistir — nunca se confía en el cliente.
+   */
+  guardarContenido: instructorProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        contenido: z.string().max(100_000, 'El contenido es demasiado largo'),
+      }),
+    )
+    .output(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const leccion = await leccionPropia(ctx, input.id)
+      if (leccion.type !== 'TEXT') {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Esta lección no es de tipo texto.' })
+      }
+      const limpio = sanitizarHtml(input.contenido)
+      await ctx.prisma.$transaction(async (tx) => {
+        await tx.lesson.update({ where: { id: input.id }, data: { content: limpio } })
+        await auditFromRequest(ctx, 'UPDATE_LESSON', auditResource('Lesson', input.id), { campo: 'content' }, tx)
       })
       return { id: input.id }
     }),

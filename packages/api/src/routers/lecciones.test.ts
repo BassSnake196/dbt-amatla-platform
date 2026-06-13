@@ -121,6 +121,52 @@ describe('lecciones — CRUD y orden', () => {
   })
 })
 
+describe('lecciones — contenido TEXT (Tiptap)', () => {
+  it('guarda HTML sanitizado (quita scripts) y lo devuelve; rechaza no-TEXT', async () => {
+    const api = callerComo(INSTRUCTORA)
+    const texto = await api.lecciones.crear({ seccionId, titulo: 'Lección de texto', tipo: 'TEXT' })
+
+    // HTML con un <script> y un onclick maliciosos + formato legítimo
+    await api.lecciones.guardarContenido({
+      id: texto.id,
+      contenido:
+        '<h2>Título</h2><p>Hola <strong>mundo</strong></p><script>alert(1)</script><p onclick="evil()">x</p><a href="javascript:evil()">link</a>',
+    })
+
+    const { contenido } = await api.lecciones.obtenerContenido({ id: texto.id })
+    expect(contenido).toContain('<strong>mundo</strong>')
+    expect(contenido).toContain('<h2>')
+    expect(contenido).not.toContain('<script>')
+    expect(contenido).not.toContain('onclick')
+    expect(contenido).not.toContain('javascript:')
+
+    // Una lección VIDEO no admite contenido de texto
+    const video = await api.lecciones.crear({ seccionId, titulo: 'Video (no TEXT)', tipo: 'VIDEO' })
+    await expect(
+      api.lecciones.guardarContenido({ id: video.id, contenido: '<p>x</p>' }),
+    ).rejects.toMatchObject({ code: 'BAD_REQUEST' })
+    await expect(api.lecciones.obtenerContenido({ id: video.id })).rejects.toMatchObject({
+      code: 'BAD_REQUEST',
+    })
+
+    await api.lecciones.eliminar({ id: texto.id })
+    await api.lecciones.eliminar({ id: video.id })
+  })
+
+  it('un intruso no puede leer ni escribir el contenido de una lección ajena', async () => {
+    const api = callerComo(INSTRUCTORA)
+    const texto = await api.lecciones.crear({ seccionId, titulo: 'Texto privado', tipo: 'TEXT' })
+    const intruso = callerComo(INTRUSO)
+    await expect(intruso.lecciones.obtenerContenido({ id: texto.id })).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+    })
+    await expect(
+      intruso.lecciones.guardarContenido({ id: texto.id, contenido: '<p>hack</p>' }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+    await api.lecciones.eliminar({ id: texto.id })
+  })
+})
+
 describe('lecciones — ownership (3 niveles)', () => {
   it('un intruso no puede crear, editar, eliminar ni reordenar en sección ajena', async () => {
     const intruso = callerComo(INTRUSO)

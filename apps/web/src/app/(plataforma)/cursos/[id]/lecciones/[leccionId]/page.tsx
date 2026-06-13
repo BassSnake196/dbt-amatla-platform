@@ -112,14 +112,20 @@ export default async function LeccionPage({
 
       {leccion.tipo === 'TEXT' && (
         <div className="space-y-5">
-          <div className="flex min-h-48 items-center justify-center rounded-card bg-brand-surface p-10 text-center shadow-card">
-            <div className="text-neutral-900/60">
-              <NotebookText size={32} className="mx-auto text-brand-secondary" aria-hidden="true" />
-              <p className="mt-3 text-sm">
-                El contenido enriquecido de esta lección estará disponible muy pronto.
-              </p>
+          {leccion.contenido ? (
+            // HTML ya sanitizado server-side al guardar (regla #13)
+            <div
+              className="contenido-rico rounded-card bg-white p-6 shadow-card md:p-8"
+              dangerouslySetInnerHTML={{ __html: leccion.contenido }}
+            />
+          ) : (
+            <div className="flex min-h-48 items-center justify-center rounded-card bg-brand-surface p-10 text-center shadow-card">
+              <div className="text-neutral-900/60">
+                <NotebookText size={32} className="mx-auto text-brand-secondary" aria-hidden="true" />
+                <p className="mt-3 text-sm">El contenido de esta lección estará disponible muy pronto.</p>
+              </div>
             </div>
-          </div>
+          )}
           {/* Progreso secuencial: marcar la lección TEXT como terminada desbloquea la siguiente */}
           <BotonMarcarTerminada
             leccionId={leccion.id}

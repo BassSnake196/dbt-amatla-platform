@@ -504,7 +504,7 @@ GESTIÓN POR EL INSTRUCTOR:
         calcular score en servidor, marcar lección completada si passed
       - UI instructor: formulario de preguntas con drag & drop, configurar passingScore
       - UI estudiante: formulario de quiz, feedback por pregunta tras envío, reintento
-- [ ] **Visor de lección TEXT con editor enriquecido:**
+- [x] **Visor de lección TEXT con editor enriquecido:** ✅ 2026-06-13
       - El instructor edita el contenido de lecciones TEXT con un editor WYSIWYG (Tiptap)
       - El estudiante ve el HTML renderizado con botón "Marcar como terminada"
 - [ ] **Panel de admin:** tabla de usuarios con filtros, editar rol, activar/desactivar

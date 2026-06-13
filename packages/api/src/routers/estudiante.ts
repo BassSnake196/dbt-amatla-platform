@@ -507,6 +507,8 @@ export const estudianteRouter = router({
         ultimaPosicion: z.number().int(), // segundos — para reanudar reproducción
         // posición máxima vista — el reproductor limita el avance a este valor
         maxVisto: z.number().int(),
+        // HTML sanitizado de las lecciones TEXT (vacío en otros tipos)
+        contenido: z.string(),
         curso: z.object({ id: z.string(), titulo: z.string() }),
         seccionTitulo: z.string(),
       }),
@@ -538,6 +540,8 @@ export const estudianteRouter = router({
         ultimaPosicion: progreso?.lastPosition ?? 0,
         // si ya está completada, no se limita el avance (repaso libre)
         maxVisto: progreso?.completedAt ? (leccion.duration ?? Number.MAX_SAFE_INTEGER) : (progreso?.watchedSeconds ?? 0),
+        // El content ya está sanitizado en BD (se sanitiza al guardar)
+        contenido: leccion.type === 'TEXT' ? (leccion.content ?? '') : '',
         curso: { id: curso.id, titulo: curso.title },
         seccionTitulo: leccion.section.title,
       }

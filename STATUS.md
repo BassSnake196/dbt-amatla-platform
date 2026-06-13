@@ -1,6 +1,6 @@
 # 📌 Estado del Proyecto: Plataforma E-Learning
-- **Última actualización:** 2026-06-13 (sesión 6) — Fase 4: 4.1 (asignación) + 4.2/4.3 (progreso secuencial + botón TEXT) COMPLETAS. 190 tests.
-- **Fase Actual:** Fase 4 (MVP completo) — 4.1/4.2/4.3 ✅; siguiente: 4.4 (editor TEXT Tiptap)
+- **Última actualización:** 2026-06-13 (sesión 6) — Fase 4: 4.1–4.4 COMPLETAS (asignación, progreso secuencial, editor TEXT Tiptap). Fix worker pdf.js. 192 tests.
+- **Fase Actual:** Fase 4 (MVP completo) — 4.1/4.2/4.3/4.4 ✅; siguiente: 4.5 (quiz backend)
 - **Objetivo del Sprint:** Cerrar el MVP: asignación, progreso secuencial, quiz, editor TEXT, panel admin, progreso por estudiante (certificado/email/granular/móvil DIFERIDOS)
 
 ## 📋 Roadmap Global (v3.0 — MVP sin chatbot IA)
@@ -30,7 +30,7 @@
 - [x] **4.1** Asignación de curso completo: UI + router ✅ (2026-06-13 — desbloquea la demo e2e)
 - [x] **4.2** Progreso secuencial: bloqueo server-side de lección N+1 + límite scrubbing video ✅ (2026-06-13)
 - [x] **4.3** Botón "Marcar como terminada" para lecciones TEXT ✅ (2026-06-13)
-- [ ] **4.4** Editor de contenido TEXT con Tiptap (instructor) + vista renderizada (estudiante)
+- [x] **4.4** Editor de contenido TEXT con Tiptap (instructor) + vista renderizada (estudiante) ✅ (2026-06-13)
 - [ ] **4.5** Quiz backend: router quiz, procedures CRUD preguntas + enviar intento
 - [ ] **4.6** Quiz UI instructor: gestión de preguntas + passingScore
 - [ ] **4.7** Quiz UI estudiante: formulario + feedback + reintento
@@ -72,6 +72,34 @@
 - [x] Preview de lección + publicar/archivar con validación
 
 ## 🧠 Memoria de Decisiones (ADRs)
+
+### ADR — 2026-06-13 — Editor de contenido TEXT con Tiptap (Fase 4, tarea 4.4) + fix worker PDF
+**Schema:** migración `add_lesson_content` — `Lesson.content String? @db.Text` (HTML
+enriquecido). **Sanitización server-side (regla #13):** módulo `packages/api/src/sanitize.ts`
+con `isomorphic-dompurify` + allowlist alineada con Tiptap (p, h1-h4, strong/em/u/s,
+ul/ol/li, blockquote, code/pre, a con href/target/rel; `ALLOWED_URI_REGEXP` solo
+https/mailto → bloquea `javascript:`). **SIEMPRE se sanitiza al GUARDAR**, no al leer —
+así el HTML en BD ya está limpio. Backend (`lecciones.ts`): `obtenerContenido`
+(instructor, ownership 3 niveles via `leccionPropia`, exige type TEXT) y
+`guardarContenido` (sanitiza + persiste + audit UPDATE_LESSON). `estudiante.leccion`
+expone `contenido` (HTML del TEXT, '' en otros tipos). **UI instructor:** `EditorContenido`
+(Tiptap `@tiptap/react` + StarterKit + Link, `immediatelyRender: false` para evitar
+hydration mismatch en SSR de Next) con barra de herramientas (negrita/cursiva/H2/H3/
+listas/cita/enlace); página `/instructor/cursos/[id]/lecciones/[leccionId]/editar`; enlace
+"Editar contenido" (ícono Pencil) en la fila de lección TEXT. **UI estudiante:** la rama
+TEXT renderiza el HTML con `dangerouslySetInnerHTML` (ya sanitizado) en `.contenido-rico`
+(estilos en globals.css) + el botón "Marcar como terminada" (4.3). **GOTCHA DOMPurify TS:**
+`DOMPurify.Config` no es un namespace accesible → no anotar el config con ese tipo; añadir
+`RETURN_DOM: false` + `RETURN_DOM_FRAGMENT: false` para que `sanitize` infiera retorno
+`string`. **FIX worker pdf.js (resolvía un error del frontend del visor PDF):** el patrón
+`new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url)` NO resuelve en runtime
+con el bundler de Next → el visor fallaba al abrir un PDF. Solución: copiar el worker a
+`apps/web/public/pdf.worker.min.mjs` (versión EXACTA de pdfjs-dist, hoy 5.4.296) y
+`workerSrc = '/pdf.worker.min.mjs'`. Si se actualiza pdfjs-dist hay que recopiarlo (anotado
+en el código). Verificado e2e: instructor guarda HTML con `<script>`/`onclick`/`javascript:`
+→ se eliminan, formato legítimo (h2/strong/enlace https) se conserva; estudiante recibe y
+renderiza el contenido; páginas /editar y de lección 200. 2 tests nuevos (sanitización +
+ownership) — **192 totales**.
 
 ### ADR — 2026-06-13 — Progreso secuencial (Fase 4, tareas 4.2 + 4.3)
 Regla MVP: no se puede abrir la lección N+1 sin completar la N (salvo `isPreview`).
