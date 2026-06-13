@@ -182,7 +182,7 @@ async function bloqueadaPorSecuencia(
  * lección isPreview). Cualquier otro caso → NOT_FOUND idéntico al de
  * "no existe": una lección 🔒 no revela nada aunque se adivine el id.
  */
-async function leccionAccesible(ctx: Context & { user: SessionUser }, leccionId: string) {
+export async function leccionAccesible(ctx: Context & { user: SessionUser }, leccionId: string) {
   const leccion = await ctx.prisma.lesson.findUnique({
     where: { id: leccionId },
     include: { section: { select: { id: true, title: true, courseId: true } } },

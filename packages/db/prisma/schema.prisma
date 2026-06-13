@@ -168,13 +168,61 @@ model Lesson {
   // Contenido HTML enriquecido de las lecciones TEXT (editor Tiptap).
   // SIEMPRE sanitizado server-side con DOMPurify antes de persistir (regla #13).
   content   String?    @db.Text
+  // Solo aplica a lecciones QUIZ: % mínimo de aciertos para aprobar (1-100).
+  passingScore Int     @default(70)
 
-  section     Section      @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  section     Section        @relation(fields: [sectionId], references: [id], onDelete: Cascade)
   progress    Progress[]
   comments    Comment[]
   lessonNotes LessonNote[]
+  quizQuestions QuizQuestion[]
+  quizAttempts  QuizAttempt[]
 
   @@index([sectionId, order])
+}
+
+// ===== Quiz (lecciones tipo QUIZ) =====
+
+model QuizQuestion {
+  // Una pregunta de opción múltiple (A/B/C/D) de una lección QUIZ.
+  // La respuesta correcta (correctOption) NUNCA viaja al cliente del
+  // estudiante antes de enviar el intento (regla de seguridad #13).
+  id            String   @id @default(cuid())
+  lessonId      String
+  order         Int
+  stem          String   @db.Text // enunciado de la pregunta
+  optionA       String
+  optionB       String
+  optionC       String
+  optionD       String
+  correctOption String // 'A' | 'B' | 'C' | 'D'
+  explanation   String?  @db.Text // explicación opcional (feedback tras el envío)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@index([lessonId, order])
+}
+
+model QuizAttempt {
+  // Intento de un estudiante en un quiz. Se conserva SOLO el último por
+  // enrollment+lesson (el envío sobrescribe el anterior — @@unique).
+  // El score se calcula SIEMPRE en el servidor, nunca se confía en el cliente.
+  id           String   @id @default(cuid())
+  enrollmentId String
+  lessonId     String
+  answers      Json // { [questionId]: 'A' | 'B' | 'C' | 'D' }
+  score        Int // % de aciertos (0-100)
+  passed       Boolean // score >= Lesson.passingScore
+  attemptedAt  DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  enrollment Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  lesson     Lesson     @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  // Un solo intento (el último) por inscripción y lección
+  @@unique([enrollmentId, lessonId])
 }
 
 // ===== Inscripciones y acceso granular =====
@@ -195,6 +243,7 @@ model Enrollment {
   progress       Progress[]
   clinicalNotes  ClinicalNote[]
   lessonNotes    LessonNote[]
+  quizAttempts   QuizAttempt[]
   aiSessions     AiSession[]
   certificate    Certificate?
 

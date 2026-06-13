@@ -19,8 +19,8 @@ const datosLeccion = z.object({
     .trim()
     .min(2, 'El título necesita al menos 2 caracteres')
     .max(120, 'El título no puede pasar de 120 caracteres'),
-  tipo: z.enum(['VIDEO', 'PDF', 'TEXT'], {
-    errorMap: () => ({ message: 'El tipo debe ser VIDEO, PDF o TEXT' }),
+  tipo: z.enum(['VIDEO', 'PDF', 'TEXT', 'QUIZ'], {
+    errorMap: () => ({ message: 'El tipo debe ser VIDEO, PDF, TEXT o QUIZ' }),
   }),
 })
 

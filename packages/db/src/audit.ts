@@ -32,6 +32,12 @@ export const AUDIT_ACTIONS = [
   'UPDATE_LESSON',
   'DELETE_LESSON',
   'REORDER_LESSONS',
+  // Quiz
+  'CREATE_QUIZ_QUESTION',
+  'UPDATE_QUIZ_QUESTION',
+  'DELETE_QUIZ_QUESTION',
+  'REORDER_QUIZ_QUESTIONS',
+  'SUBMIT_QUIZ',
   // Acceso y asignación
   'ASSIGN_COURSE',
   'REVOKE_ENROLLMENT',
@@ -56,6 +62,7 @@ type AuditableModel =
   | 'Course'
   | 'Section'
   | 'Lesson'
+  | 'QuizQuestion'
   | 'Enrollment'
   | 'ModuleAccess'
   | 'FileUpload'

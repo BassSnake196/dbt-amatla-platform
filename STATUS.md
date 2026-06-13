@@ -1,6 +1,6 @@
 # 📌 Estado del Proyecto: Plataforma E-Learning
-- **Última actualización:** 2026-06-13 (sesión 6) — Fase 4: 4.1–4.4 COMPLETAS (asignación, progreso secuencial, editor TEXT Tiptap). Fix worker pdf.js. 192 tests.
-- **Fase Actual:** Fase 4 (MVP completo) — 4.1/4.2/4.3/4.4 ✅; siguiente: 4.5 (quiz backend)
+- **Última actualización:** 2026-06-13 (sesión 7) — Fase 4: 4.5 COMPLETA (quiz backend: modelos QuizQuestion/QuizAttempt + router quiz con score server-side). Migración add_quiz. 207 tests.
+- **Fase Actual:** Fase 4 (MVP completo) — 4.0/4.1/4.2/4.3/4.4/4.5 ✅; siguiente: 4.6 (quiz UI instructor)
 - **Objetivo del Sprint:** Cerrar el MVP: asignación, progreso secuencial, quiz, editor TEXT, panel admin, progreso por estudiante (certificado/email/granular/móvil DIFERIDOS)
 
 ## 📋 Roadmap Global (v3.0 — MVP sin chatbot IA)
@@ -25,13 +25,12 @@
 - [x] Barra de progreso por curso (cabecera de la vista de curso + cards del dashboard)
 
 ## 🎯 Fase 4 — MVP Completo (Tareas del Día)
-- [ ] **4.0** Migración schema: modelos QuizQuestion + QuizAttempt + campo passingScore en Lesson
-      (verificar si ya existen antes de crear; si no, migrar primero)
+- [x] **4.0** Migración schema: modelos QuizQuestion + QuizAttempt + campo passingScore en Lesson ✅ (2026-06-13 — migración `add_quiz`)
 - [x] **4.1** Asignación de curso completo: UI + router ✅ (2026-06-13 — desbloquea la demo e2e)
 - [x] **4.2** Progreso secuencial: bloqueo server-side de lección N+1 + límite scrubbing video ✅ (2026-06-13)
 - [x] **4.3** Botón "Marcar como terminada" para lecciones TEXT ✅ (2026-06-13)
 - [x] **4.4** Editor de contenido TEXT con Tiptap (instructor) + vista renderizada (estudiante) ✅ (2026-06-13)
-- [ ] **4.5** Quiz backend: router quiz, procedures CRUD preguntas + enviar intento
+- [x] **4.5** Quiz backend: router quiz, procedures CRUD preguntas + enviar intento ✅ (2026-06-13)
 - [ ] **4.6** Quiz UI instructor: gestión de preguntas + passingScore
 - [ ] **4.7** Quiz UI estudiante: formulario + feedback + reintento
 - [ ] **4.8** Panel de admin: tabla de usuarios, cambiar rol, activar/desactivar
@@ -72,6 +71,41 @@
 - [x] Preview de lección + publicar/archivar con validación
 
 ## 🧠 Memoria de Decisiones (ADRs)
+
+### ADR — 2026-06-13 — Quiz backend (Fase 4, tarea 4.5)
+**Schema** (migración `add_quiz`, aplicada con dev servers detenidos por el EPERM de Windows):
+`Lesson.passingScore Int @default(70)` (solo aplica a QUIZ); modelo `QuizQuestion`
+(lessonId, order, stem, optionA-D, `correctOption` 'A'|'B'|'C'|'D', `explanation?`,
+timestamps; `onDelete: Cascade` desde Lesson; `@@index([lessonId, order])`); modelo
+`QuizAttempt` (enrollmentId, lessonId, `answers` Json `{questionId: 'A'..'D'}`, score,
+passed, attemptedAt, updatedAt; cascada desde Enrollment y Lesson; **`@@unique([enrollmentId,
+lessonId])`** → el envío SOBRESCRIBE el intento anterior, solo se conserva el último).
+Relaciones inversas añadidas en `Lesson` (quizQuestions, quizAttempts) y `Enrollment`
+(quizAttempts).
+**Router `quiz`** (`packages/api/src/routers/quiz.ts`, montado en `root.ts`):
+- *Instructor* (ownership 3 niveles vía `leccionPropia` + helper `leccionQuizPropia` que
+  exige type QUIZ; `preguntaPropia` para ops sobre una pregunta): `preguntas` (CON la
+  correcta, para editar), `crearPregunta`, `actualizarPregunta`, `eliminarPregunta`,
+  `reordenarPreguntas` (patrón `secciones.reordenar`), `configurarPassingScore` (1-100,
+  audita como UPDATE_LESSON).
+- *Estudiante* (acceso vía `leccionAccesible` de `estudiante.ts` —ahora **exportado**— que
+  ya valida Enrollment + ModuleAccess + progreso secuencial): `preguntasEstudiante`
+  (**SIN** la correcta ni la explicación — `select` explícito en la query, regla #13),
+  `enviarIntento` (**score calculado en el SERVIDOR**: aciertos/total*100; valida que TODAS
+  las preguntas estén respondidas y que el quiz tenga ≥1 pregunta; upsert del attempt; si
+  `passed` marca `Progress.completedAt` —pegajoso: un intento posterior reprobatorio NO
+  des-completa—; audita SUBMIT_QUIZ; devuelve feedback con la correcta, que ya es lícito
+  revelar TRAS el envío), `miIntento` (último intento + feedback reconstruido, null si no hay).
+**Auditoría:** añadidas `CREATE/UPDATE/DELETE/REORDER_QUIZ_QUESTION(S)` + `SUBMIT_QUIZ` al
+catálogo `AUDIT_ACTIONS`, y `QuizQuestion` a `AuditableModel` (`packages/db/src/audit.ts`).
+**Lecciones:** `datosLeccion` ahora acepta `QUIZ` (sin esto el instructor no podría crear
+lecciones de quiz); se actualizó el test de `lecciones` que asumía el rechazo de QUIZ.
+**Seguridad verificada (tests):** la correcta nunca viaja al estudiante antes del envío;
+el score es server-side (no se confía en el cliente); aprobar completa la lección y cuenta
+en la secuencia; el quiz respeta el bloqueo secuencial; ownership de instructor.
+**Alcance:** SOLO backend — la UI es 4.6 (instructor) y 4.7 (estudiante). Verificación a
+nivel de integración contra Postgres real (sin e2e HTTP: no hay UI ni transporte nuevo, y
+el seed no trae lecciones QUIZ). 15 tests nuevos de quiz — **207 totales**.
 
 ### ADR — 2026-06-13 — Editor de contenido TEXT con Tiptap (Fase 4, tarea 4.4) + fix worker PDF
 **Schema:** migración `add_lesson_content` — `Lesson.content String? @db.Text` (HTML

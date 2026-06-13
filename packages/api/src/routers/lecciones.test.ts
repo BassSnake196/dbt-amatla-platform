@@ -78,12 +78,18 @@ describe('lecciones — CRUD y orden', () => {
     expect(auditoria).not.toBeNull()
   })
 
-  it('rechaza tipos fuera de VIDEO/PDF/TEXT', async () => {
+  it('acepta QUIZ y rechaza tipos fuera del catálogo', async () => {
     const api = callerComo(INSTRUCTORA)
+    // QUIZ es un tipo válido desde la tarea 4.5 (backend de quiz)
+    const quiz = await api.lecciones.crear({ seccionId, titulo: 'Quiz de práctica', tipo: 'QUIZ' })
+    const [seccion] = await api.secciones.listar({ cursoId })
+    expect(seccion!.lecciones.find((l) => l.id === quiz.id)!.tipo).toBe('QUIZ')
+    await api.lecciones.eliminar({ id: quiz.id })
+
     await expect(
       // @ts-expect-error — tipo inválido a propósito
-      api.lecciones.crear({ seccionId, titulo: 'Quiz prohibido', tipo: 'QUIZ' }),
-    ).rejects.toThrow(/VIDEO, PDF o TEXT/)
+      api.lecciones.crear({ seccionId, titulo: 'Tipo inexistente', tipo: 'PODCAST' }),
+    ).rejects.toThrow(/VIDEO, PDF, TEXT o QUIZ/)
   })
 
   it('actualizar renombra y marca como preview', async () => {
