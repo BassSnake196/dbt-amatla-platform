@@ -160,10 +160,12 @@ el único que existe lo puso el seed a mano. No hay UI para asignar.
 - **4.9 — Progreso del estudiante (instructor):**
   `/instructor/cursos/[id]/estudiantes/[studentId]` con progreso lección a lección,
   %, último acceso, intentos de quiz. Procedure `instructor.progresoEstudiante`.
-- **4.10 — Certificado:** al 100% del curso, generar PDF con @react-pdf/renderer
-  (logo, nombre, curso, fecha, QR), subir a R2, guardar URL en `Certificate`,
-  notificar. Endpoint público `/verify/[verifyCode]` (sin auth).
-- **4.11 — Emails (Resend):** bienvenida, curso asignado, certificado generado.
+  **(4.9 es la última tarea activa del MVP.)**
+
+> ⏸️ **DIFERIDO — fuera del MVP actual (no trabajar hasta nuevo aviso, decisión
+> usuario 2026-06-13):** certificado PDF (`Certificate` + `/verify/[code]`),
+> notificaciones email (Resend), asignación granular por secciones (ModuleAccess)
+> y app móvil (Expo). Se retoman cuando el usuario lo indique.
 
 ## Archivos clave
 - `packages/api/src/routers/cursos.ts` — helper `cursoPropio` (patrón ownership)

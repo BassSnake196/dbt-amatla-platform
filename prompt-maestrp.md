@@ -510,17 +510,22 @@ GESTIÓN POR EL INSTRUCTOR:
 - [ ] **Panel de admin:** tabla de usuarios con filtros, editar rol, activar/desactivar
 - [ ] **Vista de progreso del estudiante para el instructor:**
       lección por lección, con porcentaje, último acceso, intentos de quiz
+
+> ⏸️ **DIFERIDO — fuera del MVP actual (no trabajar hasta nuevo aviso, decisión usuario 2026-06-13).**
+> Los siguientes puntos quedan comentados; se retoman cuando el usuario lo indique.
+<!--
 - [ ] **Generación de certificado PDF al completar 100%:**
       @react-pdf/renderer, subido a R2, URL en Certificate, endpoint público `/verify/[code]`
 - [ ] **Notificaciones email (Resend):** bienvenida, nuevo curso asignado, certificado generado
 - [ ] **Asignación granular por secciones** (Fase 4 extendida — post asignación simple):
       usa tabla ModuleAccess para control sección por sección
+-->
 
-### FASE 5 — Calidad + CI/CD completo + App Móvil base
+### FASE 5 — Calidad + CI/CD completo
 - [ ] Tests de carga con k6: 50 usuarios concurrentes, p95 < 2s, error rate < 1%
 - [ ] Tests E2E con Playwright: flujos críticos completos
-- [ ] App Expo base: autenticación + mis cursos + reproductor de video
-- [ ] CI/CD completo: web / backend / security-scan / mobile
+<!-- ⏸️ DIFERIDO (fuera del MVP): App Expo base — autenticación + mis cursos + reproductor de video -->
+- [ ] CI/CD completo: web / backend / security-scan
 - [ ] Sentry + Axiom en producción
 - [ ] GitHub real + deploy a Vercel/Railway/Supabase
 

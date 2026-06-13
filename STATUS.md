@@ -1,7 +1,7 @@
 # 📌 Estado del Proyecto: Plataforma E-Learning
 - **Última actualización:** 2026-06-13 (sesión 6) — Fase 4 tarea 4.1 (asignación de curso completo) COMPLETA. 185 tests.
 - **Fase Actual:** Fase 4 (MVP completo) — 4.1 ✅; siguiente: 4.2 (progreso secuencial)
-- **Objetivo del Sprint:** Cerrar el MVP: asignación, progreso secuencial, quiz, editor TEXT, certificado
+- **Objetivo del Sprint:** Cerrar el MVP: asignación, progreso secuencial, quiz, editor TEXT, panel admin, progreso por estudiante (certificado/email/granular/móvil DIFERIDOS)
 
 ## 📋 Roadmap Global (v3.0 — MVP sin chatbot IA)
 - [x] Fase 1: Infraestructura y Auth ✅ (2026-06-11)
@@ -36,8 +36,16 @@
 - [ ] **4.7** Quiz UI estudiante: formulario + feedback + reintento
 - [ ] **4.8** Panel de admin: tabla de usuarios, cambiar rol, activar/desactivar
 - [ ] **4.9** Vista de progreso del estudiante para el instructor (lección por lección)
+
+> ⏸️ **DIFERIDO — fuera del MVP actual (no trabajar hasta nuevo aviso, decisión usuario 2026-06-13):**
+> certificado PDF, notificaciones email (Resend), asignación granular por secciones (ModuleAccess)
+> y app móvil (Expo). Quedan comentados; se retoman cuando el usuario lo indique.
+<!--
 - [ ] **4.10** Generación de certificado PDF al completar 100% (@react-pdf/renderer + R2)
 - [ ] **4.11** Notificaciones email (Resend): bienvenida, curso asignado, certificado
+- [ ] Asignación granular por secciones (ModuleAccess) — Fase 4 extendida
+-->
+
 
 ## 🎯 Tareas del Día (Daily Tasks — Fase 1 completada)
 - [x] Inicializar monorepo con Turborepo
