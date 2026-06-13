@@ -88,10 +88,15 @@ eliminar/reordenar pregunta + configurarPassingScore; reusan `mensajeLegible` y 
 `/instructor/.../quiz`. **Integración:** `datosLeccion`/`TipoLeccion` ya aceptaban QUIZ (4.5);
 añadido al `<select>` de nueva lección, icono `ListChecks` para QUIZ, y enlace al gestor en la
 fila de lección QUIZ (junto al patrón del enlace TEXT→editar). **Verificación:** `type-check` +
-`next build` en verde; la nueva ruta compila y se renderiza server-side. NO se hizo e2e de
-navegador (los dev servers quedaron detenidos desde la migración de 4.5 y no hay forma de
-manejar el navegador en esta sesión) — pendiente smoke test manual del instructor. La UI del
-estudiante es 4.7.
+`next build` en verde; smoke test por HTTP contra el dev server (dev-login como instructora):
+el gestor carga 200 con el formulario, una pregunta se renderiza con su opción correcta
+resaltada y la explicación, y una lección no-QUIZ en `/quiz` da 404. No se hizo e2e de navegador
+(no hay forma de manejar el navegador en esta sesión). La UI del estudiante es 4.7.
+**GOTCHA (no del código):** correr `next build` (producción) y luego `next dev` sobre el MISMO
+`.next` desincroniza el `react-loadable-manifest` → el único componente con `next/dynamic`+
+`ssr:false` (el visor PDF, `visor-pdf-cliente`) revienta con "Object.defineProperty called on
+non-object" al evaluar el chunk de `pdf.mjs`, aunque el resto de páginas funcionan. Fix: parar
+dev, borrar `apps/web/.next`, relevantar dev. No mezclar build y dev en el mismo `.next`.
 
 ### ADR — 2026-06-13 — Quiz backend (Fase 4, tarea 4.5)
 **Schema** (migración `add_quiz`, aplicada con dev servers detenidos por el EPERM de Windows):
