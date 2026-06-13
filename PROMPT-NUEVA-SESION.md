@@ -1,4 +1,4 @@
-# 🚀 Prompt de arranque — próxima sesión (v3.0)
+# 🚀 Prompt de arranque — próxima sesión (Fase 4, tarea 4.7)
 
 > Copia todo este bloque al iniciar Claude Code en una sesión nueva.
 
@@ -6,198 +6,154 @@
 
 Lee primero `protocoloia.md` para asimilar tus reglas operacionales (sistema de
 estado en STATUS.md, una tarea a la vez, commit por feature, formato de cierre).
-Luego lee `prompt-maestrp.md` (ojo: con typo) para la arquitectura técnica y las
-fases. Después lee `STATUS.md` COMPLETO — sobre todo la sección de ADRs, que
+Luego lee `prompt-maestrp.md` (ojo: con typo; es **v3.0**) para la arquitectura
+y las fases. Después lee `STATUS.md` COMPLETO — sobre todo la sección de ADRs, que
 documenta decisiones y trampas conocidas.
 
 > ⚠️ NO confíes en lo que este prompt afirme sobre el código o el schema:
-> VERIFÍCALO en los archivos antes de actuar. Este documento describe el plan;
-> la fuente de verdad es el repo. (Ver la sección "Estado REAL del schema".)
+> VERIFÍCALO en los archivos antes de actuar. La fuente de verdad es el repo.
 
-## Contexto operativo (cómo levantar todo)
-- **Docker Desktop debe estar corriendo.** `docker compose up -d` levanta
-  postgres/redis/pgadmin/clamav.
+## 🧠 REQUISITO PERMANENTE — Rendimiento percibido (decisión del usuario 2026-06-13)
+La app debe sentirse rápida; los cambios de pantalla NO deben congelarse.
+- Toda ruta nueva del App Router lleva `loading.tsx` (hay uno global en
+  `apps/web/src/app/(plataforma)/` + el componente `Cargando` en
+  `components/layout/cargando.tsx` — reúsalo).
+- Toda acción async del cliente (server action, upload, envío) muestra spinner /
+  estado deshabilitado (`useTransition` + `Loader2`).
+- No metas dependencias pesadas (BullMQ/ioredis, jsdom) en el grafo síncrono que
+  compila cada página. Paraleliza queries con `Promise.all`.
+
+## Contexto operativo (cómo levantar todo) — 3 procesos
+- **Docker Desktop corriendo.** `docker compose up -d` levanta postgres/redis/
+  pgadmin/clamav. **OJO ClamAV:** en su PRIMER arranque `freshclam` descarga las
+  firmas (cientos de MB) y `clamd` no escanea hasta cargarlas (healthcheck
+  `start_period: 5m`). Hasta entonces las subidas quedan en PENDING y el cliente
+  llega a su timeout de 90 s. El volumen `clamav_data` persiste, así que es de una
+  sola vez. Verifica con `docker compose ps` (STATUS = healthy) antes de subir.
 - **Dev server web:** `npm run dev -w @amatla/web` (puerto 3000).
-- **Worker de media:** `npm run dev -w @amatla/worker-media` — **OBLIGATORIO**
-  para que los uploads de thumbnail/PDF/video terminen de procesarse. Si no
-  corre, los uploads quedan en `scanStatus: PENDING` para siempre (el job se
-  queda en la cola `media` de Redis sin procesar). Esto ya causó el bug del
-  "thumbnail que no sale".
-- **API Fastify** (opcional, para probar con curl + header `x-dev-user-id`):
-  `npm run dev -w @amatla/api` (puerto 4000).
-- **Entrar al sistema (navegador):** `http://localhost:3000/api/dev-login?como=instructora`
-  (también `estudiante` o `admin`). Crea/renueva sesión y pone la cookie httpOnly.
+  - Alternativa rápida: `npm run dev:turbo` (Turbopack, compila mucho más rápido;
+    el visor PDF ya funciona ahí gracias al polyfill de `Promise.withResolvers`).
+- **Worker de media (OBLIGATORIO):** `npm run dev -w @amatla/worker-media`. Sin él,
+  los jobs de escaneo/video se quedan en Redis y las subidas NUNCA salen de PENDING.
+- **API Fastify** (opcional, curl con `x-dev-user-id`): `npm run dev -w @amatla/api`
+  (puerto 4000). La web NO la usa (llama tRPC in-process vía `apiServer()`).
+- **Entrar (navegador):** `http://localhost:3000/api/dev-login?como=instructora`
+  (o `estudiante` / `admin`). Pone la cookie httpOnly de sesión.
 - **Datos de prueba:** `packages/db/seed-dev.sql`. Aplícalo con **bash**, NO
-  PowerShell (el pipe de PowerShell corrompe acentos):
+  PowerShell (el pipe corrompe acentos):
   `docker exec -i amatla-postgres psql -U amatla -d amatla_dev < packages/db/seed-dev.sql`
 - Usuarios seed: `dev-instructor-1` (INSTRUCTOR), `dev-student-1` (STUDENT),
-  `dev-admin-1` (SUPER_ADMIN). Cookies de sesión para curl:
-  `dev-session-instructor`, `dev-session-student`.
-- Claves de cifrado dev (`ENCRYPTION_MASTER_KEY`/`ENCRYPTION_SALT`) ya están en
-  `packages/api/.env` y `apps/web/.env.local` (gitignoreados). Sin ellas, las
-  notas personales (y cualquier dato cifrado) fallan al guardarse.
+  `dev-admin-1` (SUPER_ADMIN).
+- Claves de cifrado dev ya están en `packages/api/.env` y `apps/web/.env.local`.
 
-## Estado actual
-- **Fases 1, 2 y 3 COMPLETAS** (177 tests en verde). El portal del estudiante
-  está cerrado: dashboard, vista de curso con candado granular, reproductor de
-  video (Vidstack), visor PDF (react-pdf) y notas personales por timestamp
-  **cifradas** (primer uso real de `@amatla/crypto`). Las cards del estudiante
-  muestran el thumbnail real del curso.
-- **La IA conversacional (chatbot) se eliminó del MVP.** El módulo
-  `packages/ai-safety` está scaffolded pero no forma parte de ninguna fase activa.
-  La Fase 6 (IA) se retoma una vez el MVP esté en producción.
-- **Pendientes conocidos NO bloqueantes:** ESLint real (los scripts `lint` son
-  placeholders), repo GitHub + CI activo, `npm audit` (6 vulns, todas de
-  tooling/dev), trigger de inmutabilidad de AuditLog en Postgres, recuperación
-  de uploads PENDING al arrancar el worker.
+## Estado actual (verificado 2026-06-13, sesión 7)
+- **Fases 1-3 COMPLETAS. Fase 4 EN CURSO: 4.1 → 4.6 hechas. 207 tests en verde.**
+  - 4.1 ✅ Asignación de curso completo.
+  - 4.2/4.3 ✅ Progreso secuencial + "Marcar como terminada" (TEXT).
+  - 4.4 ✅ Editor TEXT con Tiptap + sanitización server-side.
+  - 4.5 ✅ Quiz BACKEND: `QuizQuestion`/`QuizAttempt`/`Lesson.passingScore`
+    (migración `add_quiz`), router `quiz` con score calculado en SERVIDOR.
+  - 4.6 ✅ Quiz UI INSTRUCTOR: gestor de preguntas con dnd-kit + passingScore
+    (`/instructor/cursos/[id]/lecciones/[leccionId]/quiz`).
+- **Rendimiento:** `loading.tsx` global + `Cargando`; BullMQ sacado del grafo
+  síncrono (`cola-media` se importa diferido en `archivos.ts`, fuera del índice de
+  `@amatla/api`, expuesto por subpath `@amatla/api/cola-media`). Script `dev:turbo`.
+- **Visor PDF arreglado:** polyfill de `Promise.withResolvers`
+  (`apps/web/src/lib/polyfill-promise-withresolvers.ts`, importado PRIMERO en
+  `visor-pdf.tsx`); regla webpack `.mjs`→`javascript/auto` SOLO fuera de Turbopack
+  (`next.config.ts` condicional con `process.env.TURBOPACK`).
+- **La IA conversacional (chatbot) está FUERA del MVP** (Fase 6, post-MVP).
 
-## ⚠️ Estado REAL del schema (verificado 2026-06-13 — NO asumas, esto es la verdad)
-Los "cambios de arquitectura" de abajo describen el ESTADO-OBJETIVO. A día de hoy
-en `packages/db/prisma/schema.prisma`:
-- **`Lesson.content` NO existe.** El único `content @db.Text` del schema es
-  `ClinicalNote.content`. Las lecciones TEXT siguen sin campo de contenido (es el
-  pendiente abierto desde la sesión 3). → Se crea en la tarea 4.4.
-- **`QuizQuestion` y `QuizAttempt` NO existen** (ni en schema ni en migraciones).
-  → Se crean en la tarea 4.5.
-- **`passingScore` NO existe.** → Se crea con los modelos de quiz (4.5).
-- `QUIZ` SÍ existe, pero solo como valor del enum `LessonType`.
-- **Recomendación (alineada con el prompt maestro "no sobredimensionar"):** crea
-  cada modelo en la tarea que lo usa (content en 4.4, quiz en 4.5), NO de forma
-  especulativa antes. Es el patrón ya establecido (VideoUpload nació con el router
-  de videos, FileUpload con archivos). Si decides consolidar migraciones, que sea
-  una decisión explícita documentada en un ADR.
+## ⚠️ Estado REAL del schema (verificado)
+- `QuizQuestion`, `QuizAttempt` y `Lesson.passingScore` **YA EXISTEN** (migración
+  `add_quiz`). `datosLeccion` (router lecciones) ya acepta `QUIZ`.
+- `QuizAttempt` es **`@@unique([enrollmentId, lessonId])`** → un solo intento (el
+  último) por inscripción+lección; `enviarIntento` lo sobrescribe.
 
-## Cambios de arquitectura de esta versión (v3.0) — PLANEADOS, aún no implementados
-1. **Progreso secuencial obligatorio:** la lección N+1 está bloqueada si la N no
-   está completada. El servidor verifica esto en cada acceso (mismo NOT_FOUND que
-   una lección bloqueada) — la UI solo lo refleja. El reproductor de video también
-   limita el scrubbing hacia adelante a `max(lastPosition, watchedSeconds)`.
-2. **Lecciones TEXT con editor enriquecido (Tiptap):** crear `Lesson.content
-   @db.Text` (migración). Instructor edita WYSIWYG; HTML sanitizado server-side
-   (isomorphic-dompurify); estudiante ve el HTML renderizado + botón "Marcar como
-   terminada".
-3. **Lecciones tipo QUIZ:** agregar modelos `QuizQuestion` y `QuizAttempt`. El
-   instructor crea preguntas A/B/C/D con respuesta correcta. El estudiante envía y
-   el SERVIDOR calcula el score (nunca el cliente). La respuesta correcta NUNCA
-   viaja al cliente antes del envío.
-4. **La IA conversacional queda fuera del MVP** — ver Fase 6 del prompt maestro.
+## TU TAREA (4.7): Quiz — UI del ESTUDIANTE
+Hoy la página de lección del estudiante
+(`apps/web/src/app/(plataforma)/cursos/[id]/lecciones/[leccionId]/page.tsx`) tiene
+un **placeholder** para `tipo === 'QUIZ'` ("El examen de esta lección estará
+disponible muy pronto"). Reemplázalo por la UI real:
+1. **Formulario de quiz** (client component, p. ej.
+   `components/cursos/quiz-estudiante.tsx`): consume `quiz.preguntasEstudiante`
+   (NO trae la respuesta correcta — regla #13) vía server action en
+   `acciones/estudiante.ts` (o nuevo `acciones/quiz-estudiante.ts`). Una opción
+   A/B/C/D por pregunta (radios). No deja enviar con preguntas sin responder.
+2. **Enviar intento:** llama `quiz.enviarIntento` (score en SERVIDOR). Muestra
+   resultado: score, passed/no passed, y **feedback por pregunta** (correcta vs
+   elegida, con la explicación) — la correcta ya es lícita DESPUÉS del envío.
+3. **Reintento:** si no aprueba, permite reintentar (el backend sobrescribe el
+   intento). Si aprueba, la lección queda completada (el backend ya marca
+   `Progress.completedAt`) → refresca para que el índice muestre la ✓ y desbloquee
+   la siguiente (progreso secuencial).
+4. **Al reabrir:** usa `quiz.miIntento` para mostrar el último resultado/feedback.
+5. **Loading + estados:** spinner al enviar; respeta el requisito de rendimiento.
+6. **Tests:** no hay backend nuevo (4.5 ya está testeado); si agregas server
+   actions, valida el flujo. Smoke test por HTTP como en 4.6 (crear lección QUIZ +
+   preguntas por SQL, dev-login estudiante, verificar render y envío).
 
-## TU TAREA (4.1): Asignación de curso completo
-El usuario confirmó el alcance: **asignación de CURSO COMPLETO** (no granular por
-secciones todavía). Es el BLOQUEANTE para que el flujo instructor→estudiante sea
-demostrable: hoy el portal del estudiante solo muestra cursos con `Enrollment`, y
-el único que existe lo puso el seed a mano. No hay UI para asignar.
+**Patrón de referencia:** mira cómo `gestor-quiz.tsx` (instructor) y
+`boton-marcar-terminada.tsx` / `reproductor-video.tsx` (estudiante) usan server
+actions + `useTransition` + `router.refresh()`.
 
-> Nota sobre el orden: el prompt v3.0 original sugería crear `QuizQuestion`/
-> `QuizAttempt` como "sub-tarea 0" antes de la asignación. Recomendación: NO lo
-> hagas — la asignación no los necesita, y crear schema muerto va contra el
-> principio "no sobredimensionar". Crea esos modelos en la tarea 4.5. Si el
-> usuario insiste en consolidar, confírmalo primero.
+## 🐞 PROBLEMAS CONOCIDOS detectados (sesión 7) — pendientes de arreglar
+1. **Video no se puede adelantar/atrasar y la barra de tiempo falla.** Causa: el
+   mock dev de streaming `apps/web/src/app/api/stream-dev/[uid]/route.ts` (GET) NO
+   soporta **HTTP Range requests** (lo dice su propio comentario). Sin 206/
+   `Accept-Ranges`, el `<video>` no puede hacer seek y `player.currentTime = X`
+   (salto desde una nota) no funciona → **rompe el seek Y las notas por timestamp**.
+   FIX: implementar Range en ese GET (parsear header `Range`, responder 206 con
+   `Content-Range`/`Accept-Ranges: bytes` y el slice de bytes). Es solo el mock de
+   dev; en prod Cloudflare ya soporta Range. Probablemente conviene hacerlo ANTES
+   o junto con cualquier prueba de video/notas.
+2. **"Botón de completar lección no aparece" en video.** Es POR DISEÑO: el botón
+   `BotonMarcarTerminada` solo se renderiza para `tipo === 'TEXT'`. VIDEO completa
+   automáticamente al 80% (servidor), PDF al abrir, QUIZ al aprobar. Si el usuario
+   quiere un botón manual también en VIDEO, es una decisión de diseño a confirmar
+   (no es un bug). OJO: si el video no es seekable (problema #1) igual se puede
+   completar viéndolo en lineal hasta el 80%.
 
-**Qué construir:**
-1. Router (instructor/admin): procedures para listar estudiantes asignables,
-   asignar un curso a un estudiante (crear `Enrollment`) y quitar la asignación.
-   Ownership: el instructor solo sobre SUS cursos (reusa `cursoPropio` de
-   `cursos.ts`); SUPER_ADMIN sobre cualquiera. Auditoría con `auditFromRequest`
-   (agrega `ASSIGN_COURSE` / `UNASSIGN_COURSE` al catálogo `AUDIT_ACTIONS` en
-   `packages/db/src/audit.ts`). `Enrollment.assignedBy` = `ctx.user.id`.
-2. UI: página `/instructor/cursos/[id]/estudiantes` (server component) con un
-   selector de estudiante + botón "Asignar curso", y la lista de asignados con
-   acción "quitar". Server actions en `apps/web/src/acciones/`. Enlaza a esta
-   página desde la estructura del curso (`/instructor/cursos/[id]/page.tsx`).
-3. Mockup acordado con el usuario:
-   ```
-   /instructor/cursos/[id]/estudiantes
-   ┌─────────────────────────────┐
-   │ Asignar estudiante      [v] │
-   │  • Valentina Prueba         │
-   │         [ Asignar curso ]   │
-   ├─────────────────────────────┤
-   │ Asignados:                  │
-   │  Valentina Prueba   [quitar]│
-   └─────────────────────────────┘
-   ```
+## Orden restante del MVP (Fase 4)
+- **4.7** Quiz UI estudiante ← TU TAREA
+- **4.8** Panel de admin: tabla de usuarios, cambiar rol, activar/desactivar
+  (al desactivar: borrar filas Session de NextAuth para invalidar la sesión)
+- **4.9** Vista de progreso del estudiante para el instructor (última del MVP)
+- (sugerido) arreglar el problema conocido #1 (Range del video) cuando toques video.
 
-**Decisiones ya tomadas:**
-- El modelo `Enrollment` YA existe con `@@unique([studentId, courseId])`.
-  **NO hace falta migración** para la asignación de curso completo.
-- Para "curso completo" NO crees filas de `ModuleAccess` (sin filas = acceso
-  total; ver `seccionesAccesibles` en `estudiante.ts`). La granularidad por
-  secciones es tarea posterior de Fase 4.
-- Estudiantes asignables: **todos los usuarios con rol STUDENT activos**
-  (`isActive: true`). Un `instructorProcedure` que devuelva STUDENTs. Documenta
-  en un ADR.
-- Verifica e2e: tras asignar, loguéate como `estudiante` y confirma que el curso
-  aparece en el dashboard (el backend ya respeta `Enrollment`).
-
-## Orden de tareas de Fase 4 (después de la asignación)
-- **4.2 — Migración: `QuizQuestion` + `QuizAttempt` + `Lesson.passingScore`**
-  (solo cuando se llegue a la tarea de quiz; ver 4.5).
-- **4.3 — Progreso secuencial:** en `estudiante.leccion`/`videoLeccion` verificar
-  que la lección anterior (orden−1 en la sección, o última de la sección previa)
-  esté completada → si no, NOT_FOUND. En `ReproductorVideo` fijar el máximo
-  scrubable a `max(lastPosition, watchedSeconds)`. Procedure
-  `estudiante.marcarTextoVisto` + botón "Marcar como terminada" para TEXT.
-- **4.4 — Editor TEXT (Tiptap):** crear `Lesson.content @db.Text` (migración).
-  Instructor: `@tiptap/react` (Bold/Italic/Heading/BulletList/Link), guardar HTML
-  sanitizado (isomorphic-dompurify). Estudiante: renderizar HTML sanitizado +
-  "Marcar como terminada".
-- **4.5 — Quiz backend:** router `quiz` (`packages/api/src/routers/quiz.ts`):
-  `preguntas`/`crearPregunta`/`actualizarPregunta`/`eliminarPregunta`/
-  `reordenarPreguntas` (instructor), `configurarPassingScore`,
-  `enviarIntento` (estudiante; score en servidor; crea Progress.completedAt si
-  aprueba; la correcta nunca en el output previo al envío), `miIntento`.
-  Audit `SUBMIT_QUIZ`. Tests: score calculado, correcta no expuesta, aprobado→
-  lección completada.
-- **4.6 — Quiz UI instructor:** gestor de preguntas con dnd-kit, formulario
-  A/B/C/D + correcta + explicación, campo passingScore (1-100, default 70).
-- **4.7 — Quiz UI estudiante:** formulario con radios, "Enviar examen"
-  deshabilitado si falta responder; tras envío score + ✓/✗ por pregunta +
-  explicación + "Reintentar"; si pasa, lección completada (router.refresh()).
-- **4.8 — Panel admin usuarios:** `/admin/usuarios` tabla (nombre/email/rol/
-  isActive/alta), filtro por rol y búsqueda. `admin.listarUsuarios`/`cambiarRol`/
-  `toggleActivo`. Al desactivar: borrar filas Session de NextAuth (invalida sesión).
-- **4.9 — Progreso del estudiante (instructor):**
-  `/instructor/cursos/[id]/estudiantes/[studentId]` con progreso lección a lección,
-  %, último acceso, intentos de quiz. Procedure `instructor.progresoEstudiante`.
-  **(4.9 es la última tarea activa del MVP.)**
-
-> ⏸️ **DIFERIDO — fuera del MVP actual (no trabajar hasta nuevo aviso, decisión
-> usuario 2026-06-13):** certificado PDF (`Certificate` + `/verify/[code]`),
-> notificaciones email (Resend), asignación granular por secciones (ModuleAccess)
-> y app móvil (Expo). Se retoman cuando el usuario lo indique.
+## ⏸️ DIFERIDO — fuera del MVP actual (NO trabajar hasta nuevo aviso)
+Certificado PDF, notificaciones email (Resend), asignación granular por secciones
+(ModuleAccess) y app móvil (Expo). No los implementes.
 
 ## Archivos clave
-- `packages/api/src/routers/cursos.ts` — helper `cursoPropio` (patrón ownership)
-- `packages/api/src/routers/estudiante.ts` — cómo se consume Enrollment/Progress y
-  `seccionesAccesibles`/`leccionAccesible`
-- `packages/api/src/routers/secciones.ts` — patrón router instructor + audit + dnd
-- `packages/db/src/audit.ts` — catálogo cerrado AUDIT_ACTIONS
-- `packages/api/src/root.ts` — montar routers
-- `apps/web/src/app/(plataforma)/instructor/cursos/[id]/page.tsx` — dónde enlazar
-- `apps/web/src/components/instructor/acciones-curso.tsx` — patrón client+action
-- `apps/web/src/components/instructor/lecciones-seccion.tsx` — patrón dnd-kit
-- `apps/web/src/acciones/cursos.ts` y `acciones/estudiante.ts` — server actions
-- `apps/web/src/lib/api-server.ts` (`apiServer()`), `lib/guardia.ts`
-  (`exigirInstructor()`)
+- `packages/api/src/routers/quiz.ts` — procedures de estudiante:
+  `preguntasEstudiante` (sin correcta), `enviarIntento` (score server-side +
+  completa la lección), `miIntento`.
+- `packages/api/src/routers/estudiante.ts` — `leccionAccesible` (exportado),
+  cómo se marca Progress, patrón de procedures de estudiante.
+- `apps/web/src/components/instructor/gestor-quiz.tsx` — patrón UI de quiz (dnd-kit,
+  formularios, optimista).
+- `apps/web/src/acciones/estudiante.ts` — server actions del estudiante.
+- `apps/web/src/app/(plataforma)/cursos/[id]/lecciones/[leccionId]/page.tsx` — la
+  página a editar (rama QUIZ).
+- `apps/web/src/components/cursos/reproductor-video.tsx` — patrón cliente + notas.
 
 ## GOTCHAs que SÍ o SÍ vas a pisar
-- Tras cambiar cualquier router, recompila el dist: `npx turbo run build
-  --filter=@amatla/api` — si no, el dev server de Next usa la versión vieja y
-  verás "procedure not found" (→ 404).
-- `prisma migrate`/`generate` falla con EPERM si el dev server de Next o la API
-  están corriendo (bloquean el DLL del query engine en Windows). Detén los
-  procesos node del proyecto antes de migrar/generar.
-- Las respuestas correctas del quiz NUNCA deben incluirse en el output de ningún
-  procedure de listado de preguntas para el estudiante — solo después del envío.
-- Verificación con curl: las URLs en HTML llevan `&amp;` (entidad); en el payload
-  RSC llevan `&`. Conviértelas a `&` según corresponda. Un body JSON con
+- Tras cambiar cualquier router: `npx turbo run build --filter=@amatla/api` — si no,
+  el dev de Next usa el dist viejo ("procedure not found" → 404).
+- `prisma migrate`/`generate` falla con **EPERM** si el dev de Next o la API están
+  corriendo (bloquean el DLL del query engine en Windows). Detén esos procesos node
+  del proyecto antes de migrar/generar (no puedes matarlos tú: pídeselo al usuario).
+- **NO mezcles `next build` y `next dev` en el mismo `.next`** (desincroniza chunks/
+  manifest). Si pasa: parar dev, `Remove-Item -Recurse -Force apps\web\.next`, relevantar.
+- **Las respuestas correctas del quiz NUNCA viajan al estudiante** antes del envío.
+- Verificación con curl: URLs en HTML llevan `&amp;`, en RSC `&`. Body JSON con
   acentos por `curl -d` da `FST_ERR_CTP_INVALID_CONTENT_LENGTH` → usa
   `--data-binary @archivo` o ASCII.
-- Comillas dobles dentro de `git commit -m @'...'@` rompen el parseo de
-  PowerShell 5.1 → evita `"` en el mensaje de commit.
+- **Comillas dobles dentro de `git commit -m @'...'@`** rompen PowerShell 5.1 → evita
+  `"` en el mensaje (o usa heredoc de bash `git commit -F - <<'EOF'`).
 
-**Flujo de trabajo:** una tarea a la vez, verifica todo (tests + e2e con
-dev-login real), commit por feature, y actualiza `STATUS.md` (incluyendo un ADR
-con las decisiones) antes de reportar. Termina con el formato del protocolo
-("✅ Tarea [X] completada. STATUS.md actualizado. Lo que sigue es [Y]. ¿Procedo?").
+**Flujo de trabajo:** una tarea a la vez, verifica todo (tests + smoke e2e con
+dev-login real), commit por feature, y actualiza `STATUS.md` (con un ADR) antes de
+reportar. Termina con el formato del protocolo ("✅ Tarea [X] completada.
+STATUS.md actualizado. Lo que sigue es [Y]. ¿Procedo?").
