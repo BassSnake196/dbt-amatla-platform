@@ -12,10 +12,11 @@ import { ChevronLeft, ChevronRight, Download, Loader2 } from 'lucide-react'
 import { Document, Page, pdfjs } from 'react-pdf'
 import { marcarMaterialVistoAction } from '@/acciones/estudiante'
 
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url,
-).toString()
+// El worker de pdf.js se sirve desde /public (copiado de pdfjs-dist en su
+// versión EXACTA). Evita el frágil `new URL(..., import.meta.url)` que no
+// resuelve en runtime con el bundler de Next. Si se actualiza pdfjs-dist,
+// recopiar: cp node_modules/pdfjs-dist/build/pdf.worker.min.mjs apps/web/public/
+pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs'
 
 export interface VisorPdfProps {
   leccionId: string
