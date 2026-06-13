@@ -21,7 +21,12 @@ import {
 } from '@vidstack/react/player/layouts/default'
 import '@vidstack/react/player/styles/default/theme.css'
 import '@vidstack/react/player/styles/default/layouts/video.css'
-import { guardarProgresoVideoAction, renovarUrlVideoAction } from '@/acciones/estudiante'
+import {
+  guardarProgresoVideoAction,
+  renovarUrlVideoAction,
+  type NotaVideo,
+} from '@/acciones/estudiante'
+import { NotasVideo } from './notas-video'
 
 const INTERVALO_GUARDADO_MS = 15_000
 const MARGEN_RENOVACION_MS = 5 * 60_000 // renovar 5 min antes de expirar
@@ -62,6 +67,7 @@ interface ReproductorVideoProps {
   tipo: 'video/mp4'
   expiraEpochInicial: number
   posicionInicial: number // segundos — para reanudar donde se quedó
+  notasIniciales: NotaVideo[]
 }
 
 export function ReproductorVideo({
@@ -71,6 +77,7 @@ export function ReproductorVideo({
   tipo,
   expiraEpochInicial,
   posicionInicial,
+  notasIniciales,
 }: ReproductorVideoProps) {
   const router = useRouter()
   const playerRef = useRef<MediaPlayerInstance>(null)
@@ -126,30 +133,47 @@ export function ReproductorVideo({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [src, leccionId, tipo])
 
+  // Saltar a un timestamp desde una nota: posiciona y, si está pausado, reproduce
+  function irATiempo(segundos: number) {
+    const player = playerRef.current
+    if (!player) return
+    player.currentTime = segundos
+    if (player.paused) void player.play()
+  }
+
   return (
-    <div className="overflow-hidden rounded-card bg-black shadow-card">
-      <MediaPlayer
-        ref={playerRef}
-        src={src}
-        title={titulo}
-        onCanPlay={() => {
-          const pendiente = posicionPendienteRef.current
-          if (pendiente !== null && playerRef.current) {
-            playerRef.current.currentTime = pendiente
-            posicionPendienteRef.current = null
-          }
-        }}
-        onPause={() => void guardarPosicion()}
-        onEnded={() => void guardarPosicion()}
-        className="aspect-video w-full"
-      >
-        <MediaProvider />
-        <DefaultVideoLayout
-          icons={defaultLayoutIcons}
-          translations={TRADUCCIONES}
-          playbackRates={VELOCIDADES}
-        />
-      </MediaPlayer>
+    <div className="space-y-5">
+      <div className="overflow-hidden rounded-card bg-black shadow-card">
+        <MediaPlayer
+          ref={playerRef}
+          src={src}
+          title={titulo}
+          onCanPlay={() => {
+            const pendiente = posicionPendienteRef.current
+            if (pendiente !== null && playerRef.current) {
+              playerRef.current.currentTime = pendiente
+              posicionPendienteRef.current = null
+            }
+          }}
+          onPause={() => void guardarPosicion()}
+          onEnded={() => void guardarPosicion()}
+          className="aspect-video w-full"
+        >
+          <MediaProvider />
+          <DefaultVideoLayout
+            icons={defaultLayoutIcons}
+            translations={TRADUCCIONES}
+            playbackRates={VELOCIDADES}
+          />
+        </MediaPlayer>
+      </div>
+
+      <NotasVideo
+        leccionId={leccionId}
+        notasIniciales={notasIniciales}
+        obtenerTiempoActual={() => playerRef.current?.currentTime ?? 0}
+        irATiempo={irATiempo}
+      />
     </div>
   )
 }

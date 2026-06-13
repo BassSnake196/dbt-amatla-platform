@@ -33,6 +33,18 @@ export default async function LeccionPage({
       ? await api.estudiante.pdfLeccion({ id: leccionId }).catch(() => null)
       : null
 
+  // Notas personales (texto cifrado en BD) — solo tiene sentido en video
+  const notasCrudas =
+    leccion.tipo === 'VIDEO' && video
+      ? await api.estudiante.notasLeccion({ leccionId }).catch(() => [])
+      : []
+  const notas = notasCrudas.map((n) => ({
+    id: n.id,
+    posicionSegundos: n.posicionSegundos,
+    texto: n.texto,
+    actualizadaEl: n.actualizadaEl.toISOString(),
+  }))
+
   return (
     <article className="space-y-4">
       <header>
@@ -62,6 +74,7 @@ export default async function LeccionPage({
           tipo={video.tipo}
           expiraEpochInicial={video.expiraEn.getTime()}
           posicionInicial={leccion.estado === 'COMPLETADA' ? 0 : leccion.ultimaPosicion}
+          notasIniciales={notas}
         />
       )}
 

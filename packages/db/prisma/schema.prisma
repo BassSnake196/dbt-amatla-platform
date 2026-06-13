@@ -166,9 +166,10 @@ model Lesson {
   // sin botón de descarga directa para el estudiante
   allowDownload Boolean @default(true)
 
-  section  Section    @relation(fields: [sectionId], references: [id], onDelete: Cascade)
-  progress Progress[]
-  comments Comment[]
+  section     Section      @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  progress    Progress[]
+  comments    Comment[]
+  lessonNotes LessonNote[]
 
   @@index([sectionId, order])
 }
@@ -190,6 +191,7 @@ model Enrollment {
   moduleAccess   ModuleAccess[]
   progress       Progress[]
   clinicalNotes  ClinicalNote[]
+  lessonNotes    LessonNote[]
   aiSessions     AiSession[]
   certificate    Certificate?
 
@@ -227,6 +229,24 @@ model Progress {
 
   // Un registro de progreso por lección por inscripción
   @@unique([enrollmentId, lessonId])
+}
+
+model LessonNote {
+  // Nota personal del estudiante en un punto del video — DATOS SENSIBLES
+  // (texto libre sobre su proceso): `body` se cifra con AES-256-GCM via
+  // @amatla/crypto ANTES de persistir. Nunca guardar el texto en claro.
+  id              String   @id @default(cuid())
+  enrollmentId    String
+  lessonId        String
+  positionSeconds Int      @default(0) // timestamp en el video
+  body            String   @db.Text // [ENCRYPTED] AES-256-GCM
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  enrollment Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  lesson     Lesson     @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@index([enrollmentId, lessonId])
 }
 
 // ===== Datos clínicos sensibles =====

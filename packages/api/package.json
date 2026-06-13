@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@amatla/config": "*",
+    "@amatla/crypto": "*",
     "@amatla/db": "*",
     "@amatla/storage": "*",
     "@fastify/cors": "^10.0.1",

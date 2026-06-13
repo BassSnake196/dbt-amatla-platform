@@ -12,6 +12,16 @@ export function formatearDuracion(segundos: number): string {
   return `${horas} h ${minutos} min`
 }
 
+/** Segundos → timestamp de video "12:34" / "1:02:05". */
+export function formatearTimestamp(segundos: number): string {
+  const s = Math.max(0, Math.floor(segundos))
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const seg = s % 60
+  const mm = h > 0 ? String(m).padStart(2, '0') : String(m)
+  return `${h > 0 ? `${h}:` : ''}${mm}:${String(seg).padStart(2, '0')}`
+}
+
 /** Partes de una fecha para el bloque estilo calendario y la hora local. */
 export function partesFechaSesion(fecha: Date): {
   dia: string // "MIÉ"

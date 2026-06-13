@@ -7,6 +7,7 @@
 
 import { z } from 'zod'
 import { TRPCError } from '@trpc/server'
+import { encrypt, decryptField } from '@amatla/crypto'
 import { router, protectedProcedure } from '../trpc.js'
 import { obtenerStream } from '../stream.js'
 import { obtenerAlmacen } from '../almacen.js'
@@ -130,6 +131,35 @@ async function leccionAccesible(ctx: Context & { user: SessionUser }, leccionId:
   }
   return { leccion, inscripcion }
 }
+
+/**
+ * Nota que pertenece al estudiante de la sesión (vía enrollment.studentId).
+ * NOT_FOUND si no existe o es de otra persona — nunca revelar que existe
+ * una nota ajena.
+ */
+async function notaPropia(ctx: Context & { user: SessionUser }, notaId: string) {
+  const nota = await ctx.prisma.lessonNote.findUnique({
+    where: { id: notaId },
+    include: { enrollment: { select: { studentId: true } } },
+  })
+  if (!nota || nota.enrollment.studentId !== ctx.user.id) {
+    throw new TRPCError({ code: 'NOT_FOUND', message: 'Nota no encontrada.' })
+  }
+  return nota
+}
+
+const notaVista = z.object({
+  id: z.string(),
+  posicionSegundos: z.number().int(),
+  texto: z.string(),
+  actualizadaEl: z.date(),
+})
+
+const textoNota = z
+  .string()
+  .trim()
+  .min(1, 'La nota no puede estar vacía')
+  .max(2000, 'La nota no puede pasar de 2000 caracteres')
 
 export const estudianteRouter = router({
   /**
@@ -567,5 +597,83 @@ export const estudianteRouter = router({
         estado: yaCompletada || completadaAhora ? ('COMPLETADA' as const) : ('EN_PROGRESO' as const),
         completadaAhora,
       }
+    }),
+
+  /**
+   * Notas personales del estudiante en una lección, ordenadas por su
+   * timestamp en el video. El texto va CIFRADO en BD (AES-256-GCM) y se
+   * descifra aquí — datos sensibles (regla #9). Solo notas propias.
+   */
+  notasLeccion: protectedProcedure
+    .input(z.object({ leccionId: z.string() }))
+    .output(z.array(notaVista))
+    .query(async ({ ctx, input }) => {
+      const { leccion, inscripcion } = await leccionAccesible(ctx, input.leccionId)
+
+      const notas = await ctx.prisma.lessonNote.findMany({
+        where: { enrollmentId: inscripcion.id, lessonId: leccion.id },
+        orderBy: [{ positionSeconds: 'asc' }, { createdAt: 'asc' }],
+      })
+
+      return notas.map((nota) => ({
+        id: nota.id,
+        posicionSegundos: nota.positionSeconds,
+        // decryptField devuelve null si el dato está corrupto — no romper la lista
+        texto: decryptField(nota.body) ?? '',
+        actualizadaEl: nota.updatedAt,
+      }))
+    }),
+
+  /** Crear una nota en un punto del video. El texto se cifra antes de persistir. */
+  crearNota: protectedProcedure
+    .input(
+      z.object({
+        leccionId: z.string(),
+        posicionSegundos: z.number().int().min(0).max(60 * 60 * 24),
+        texto: textoNota,
+      }),
+    )
+    .output(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const { leccion, inscripcion } = await leccionAccesible(ctx, input.leccionId)
+
+      // La posición nunca rebasa la duración conocida (datos de BD)
+      const posicion =
+        leccion.duration !== null
+          ? Math.min(input.posicionSegundos, leccion.duration)
+          : input.posicionSegundos
+
+      const nota = await ctx.prisma.lessonNote.create({
+        data: {
+          enrollmentId: inscripcion.id,
+          lessonId: leccion.id,
+          positionSeconds: posicion,
+          body: encrypt(input.texto),
+        },
+      })
+      return { id: nota.id }
+    }),
+
+  /** Editar el texto de una nota propia (se re-cifra). */
+  actualizarNota: protectedProcedure
+    .input(z.object({ id: z.string(), texto: textoNota }))
+    .output(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const nota = await notaPropia(ctx, input.id)
+      await ctx.prisma.lessonNote.update({
+        where: { id: nota.id },
+        data: { body: encrypt(input.texto) },
+      })
+      return { id: nota.id }
+    }),
+
+  /** Eliminar una nota propia. */
+  eliminarNota: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .output(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const nota = await notaPropia(ctx, input.id)
+      await ctx.prisma.lessonNote.delete({ where: { id: nota.id } })
+      return { id: nota.id }
     }),
 })

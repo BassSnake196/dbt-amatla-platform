@@ -46,3 +46,78 @@ export async function renovarUrlVideoAction(
     return { url: null, expiraEpoch: null, error: 'No se pudo renovar el acceso al video.' }
   }
 }
+
+// ---- Notas personales por timestamp (texto cifrado en BD) ----
+
+export interface NotaVideo {
+  id: string
+  posicionSegundos: number
+  texto: string
+  actualizadaEl: string // ISO — la fecha viaja serializada
+}
+
+function mensajeLegible(error: unknown): string {
+  const mensaje = error instanceof Error ? error.message : 'Algo salió mal. Intenta de nuevo.'
+  try {
+    const issues = JSON.parse(mensaje) as Array<{ message: string }>
+    return issues.map((issue) => issue.message).join('. ')
+  } catch {
+    return mensaje
+  }
+}
+
+export async function listarNotasAction(leccionId: string): Promise<NotaVideo[]> {
+  const api = await apiServer()
+  try {
+    const notas = await api.estudiante.notasLeccion({ leccionId })
+    return notas.map((n) => ({
+      id: n.id,
+      posicionSegundos: n.posicionSegundos,
+      texto: n.texto,
+      actualizadaEl: n.actualizadaEl.toISOString(),
+    }))
+  } catch {
+    return []
+  }
+}
+
+export async function crearNotaAction(
+  leccionId: string,
+  posicionSegundos: number,
+  texto: string,
+): Promise<{ error: string | null }> {
+  const api = await apiServer()
+  try {
+    await api.estudiante.crearNota({
+      leccionId,
+      posicionSegundos: Math.max(0, Math.round(posicionSegundos)),
+      texto,
+    })
+    return { error: null }
+  } catch (error) {
+    return { error: mensajeLegible(error) }
+  }
+}
+
+export async function actualizarNotaAction(
+  id: string,
+  texto: string,
+): Promise<{ error: string | null }> {
+  const api = await apiServer()
+  try {
+    await api.estudiante.actualizarNota({ id, texto })
+    return { error: null }
+  } catch (error) {
+    return { error: mensajeLegible(error) }
+  }
+}
+
+export async function eliminarNotaAction(id: string): Promise<{ error: string | null }> {
+  const api = await apiServer()
+  try {
+    await api.estudiante.eliminarNota({ id })
+    return { error: null }
+  } catch (error) {
+    return { error: mensajeLegible(error) }
+  }
+}

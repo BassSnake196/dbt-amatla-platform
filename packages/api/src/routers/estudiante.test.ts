@@ -8,6 +8,9 @@ import { join } from 'node:path'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
 process.env.DATABASE_URL ??= 'postgresql://amatla:amatla_dev@localhost:5432/amatla_dev'
+// Claves de cifrado de prueba — necesarias para las notas personales (AES-256-GCM)
+process.env.ENCRYPTION_MASTER_KEY ??= '0'.repeat(64)
+process.env.ENCRYPTION_SALT ??= 'sal-de-prueba'
 
 const { prisma } = await import('@amatla/db')
 const { AlmacenLocal, StreamLocal } = await import('@amatla/storage')
@@ -169,6 +172,7 @@ beforeAll(async () => {
 })
 
 beforeEach(async () => {
+  await prisma.lessonNote.deleteMany({ where: { enrollmentId: inscripcionId } })
   await prisma.progress.deleteMany({ where: { enrollmentId: inscripcionId } })
   await prisma.calendarEvent.deleteMany({ where: { createdBy: INSTRUCTORA.id } })
   await prisma.moduleAccess.deleteMany({ where: { enrollmentId: inscripcionId } })
@@ -575,5 +579,82 @@ describe('estudiante.progresoVideo — posición y completitud al 80%', () => {
     ).rejects.toMatchObject({ code: 'NOT_FOUND' })
     const filas = await prisma.progress.count({ where: { enrollmentId: inscripcionId } })
     expect(filas).toBe(0)
+  })
+})
+
+describe('estudiante — notas personales cifradas', () => {
+  it('crea, lista (ordenado por timestamp) y el texto se persiste CIFRADO en BD', async () => {
+    const caller = callerComo(ESTUDIANTE)
+    await caller.estudiante.crearNota({
+      leccionId: leccion1Id,
+      posicionSegundos: 120,
+      texto: 'Aquí explica verificar los hechos',
+    })
+    await caller.estudiante.crearNota({
+      leccionId: leccion1Id,
+      posicionSegundos: 30,
+      texto: 'Recordar esta definición',
+    })
+
+    const notas = await caller.estudiante.notasLeccion({ leccionId: leccion1Id })
+    expect(notas).toHaveLength(2)
+    // Ordenadas por timestamp ascendente
+    expect(notas[0]!.posicionSegundos).toBe(30)
+    expect(notas[1]!.posicionSegundos).toBe(120)
+    expect(notas[0]!.texto).toBe('Recordar esta definición')
+
+    // En BD el body NO está en claro (formato iv:authTag:ciphertext)
+    const enBd = await prisma.lessonNote.findFirstOrThrow({
+      where: { enrollmentId: inscripcionId, positionSeconds: 30 },
+    })
+    expect(enBd.body).not.toContain('Recordar')
+    expect(enBd.body.split(':')).toHaveLength(3)
+  })
+
+  it('recorta la posición a la duración de BD y valida el texto', async () => {
+    const caller = callerComo(ESTUDIANTE)
+    await caller.estudiante.crearNota({ leccionId: leccion1Id, posicionSegundos: 9000, texto: 'tarde' })
+    const nota = await prisma.lessonNote.findFirstOrThrow({ where: { enrollmentId: inscripcionId } })
+    expect(nota.positionSeconds).toBe(1800) // duración de la lección
+
+    // Texto vacío → rechazado por Zod
+    await expect(
+      caller.estudiante.crearNota({ leccionId: leccion1Id, posicionSegundos: 0, texto: '   ' }),
+    ).rejects.toThrow()
+  })
+
+  it('editar re-cifra y eliminar borra; solo el dueño (ownership)', async () => {
+    const caller = callerComo(ESTUDIANTE)
+    const { id } = await caller.estudiante.crearNota({
+      leccionId: leccion1Id,
+      posicionSegundos: 60,
+      texto: 'original',
+    })
+
+    await caller.estudiante.actualizarNota({ id, texto: 'editada' })
+    let notas = await caller.estudiante.notasLeccion({ leccionId: leccion1Id })
+    expect(notas[0]!.texto).toBe('editada')
+
+    // Otra estudiante no puede tocar la nota ajena
+    await expect(
+      callerComo(OTRA_ESTUDIANTE).estudiante.actualizarNota({ id, texto: 'hackeada' }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+    await expect(
+      callerComo(OTRA_ESTUDIANTE).estudiante.eliminarNota({ id }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+
+    await caller.estudiante.eliminarNota({ id })
+    notas = await caller.estudiante.notasLeccion({ leccionId: leccion1Id })
+    expect(notas).toHaveLength(0)
+  })
+
+  it('lección bloqueada o sin inscripción: NOT_FOUND al crear/listar', async () => {
+    await restringirASeccion1()
+    await expect(
+      callerComo(ESTUDIANTE).estudiante.crearNota({ leccionId: leccion3Id, posicionSegundos: 0, texto: 'x' }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+    await expect(
+      callerComo(OTRA_ESTUDIANTE).estudiante.notasLeccion({ leccionId: leccion1Id }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
   })
 })
