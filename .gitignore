@@ -11,6 +11,8 @@ build/
 
 # Estado local de Claude Code
 .claude/scheduled_tasks.lock
+# Prompts de subtarea para los ejecutores (multi-agente) — efímeros, no se commitean
+.claude/subtask-*.md
 
 # Entorno — NUNCA commitear secretos
 .env
