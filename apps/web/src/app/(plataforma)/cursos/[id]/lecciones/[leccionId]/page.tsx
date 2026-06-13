@@ -1,14 +1,15 @@
 import { notFound } from 'next/navigation'
-import { FileText, MonitorPlay, NotebookText } from 'lucide-react'
+import { CheckCircle2, FileText, MonitorPlay, NotebookText } from 'lucide-react'
 import { apiServer } from '@/lib/api-server'
 import { formatearDuracion } from '@/lib/formato'
+import { ReproductorVideo } from '@/components/cursos/reproductor-video'
 
 export const metadata = { title: 'Lección — DBT.Amatla' }
 
 // Página de lección del estudiante. El acceso lo valida estudiante.leccion
 // (Enrollment + sección accesible o preview): lección bloqueada → 404 sin
-// revelar nada. El contenido real (video HLS firmado / visor PDF) se conecta
-// en la tarea del reproductor — aquí queda el marco listo.
+// revelar nada. Para VIDEO la URL firmada se genera on-demand (TTL 30 min,
+// regla #10) y el reproductor la renueva solo.
 export default async function LeccionPage({
   params,
 }: {
@@ -21,6 +22,12 @@ export default async function LeccionPage({
   // 404 también si la lección existe pero pertenece a otro curso (URL cruzada)
   if (!leccion || leccion.curso.id !== id) notFound()
 
+  // URL de reproducción solo cuando hay video procesado por el worker
+  const video =
+    leccion.tipo === 'VIDEO' && leccion.tieneVideo
+      ? await api.estudiante.videoLeccion({ id: leccionId }).catch(() => null)
+      : null
+
   return (
     <article className="space-y-4">
       <header>
@@ -30,17 +37,35 @@ export default async function LeccionPage({
         <h3 className="mt-1 font-serif text-xl font-semibold text-brand-dark md:text-2xl">
           {leccion.titulo}
         </h3>
-        {leccion.duracion !== null && leccion.duracion > 0 && (
-          <p className="mt-1 text-xs text-neutral-900/55">{formatearDuracion(leccion.duracion)}</p>
-        )}
+        <div className="mt-1 flex items-center gap-3 text-xs text-neutral-900/55">
+          {leccion.duracion !== null && leccion.duracion > 0 && (
+            <span>{formatearDuracion(leccion.duracion)}</span>
+          )}
+          {leccion.estado === 'COMPLETADA' && (
+            <span className="inline-flex items-center gap-1 font-semibold text-brand-secondary">
+              <CheckCircle2 size={13} aria-hidden="true" /> Completada
+            </span>
+          )}
+        </div>
       </header>
 
-      {leccion.tipo === 'VIDEO' && (
+      {leccion.tipo === 'VIDEO' && video && (
+        <ReproductorVideo
+          leccionId={leccion.id}
+          titulo={leccion.titulo}
+          urlInicial={video.url}
+          tipo={video.tipo}
+          expiraEpochInicial={video.expiraEn.getTime()}
+          posicionInicial={leccion.estado === 'COMPLETADA' ? 0 : leccion.ultimaPosicion}
+        />
+      )}
+
+      {leccion.tipo === 'VIDEO' && !video && (
         <div className="flex aspect-video w-full items-center justify-center rounded-card bg-black text-center">
           <div className="px-6 text-white/70">
             <MonitorPlay size={32} className="mx-auto" aria-hidden="true" />
             <p className="mt-3 text-sm">
-              El reproductor de video estará disponible muy pronto.
+              El video de esta lección está en preparación. Vuelve a intentarlo en un rato.
             </p>
           </div>
         </div>

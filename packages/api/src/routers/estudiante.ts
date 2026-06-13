@@ -8,6 +8,7 @@
 import { z } from 'zod'
 import { TRPCError } from '@trpc/server'
 import { router, protectedProcedure } from '../trpc.js'
+import { obtenerStream } from '../stream.js'
 import type { Context, SessionUser } from '../context.js'
 
 const cursoAsignado = z.object({
@@ -103,6 +104,30 @@ function seccionesAccesibles(inscripcion: { moduleAccess: { sectionId: string }[
 function tituloBloqueado(titulo: string): string {
   const corte = Math.min(12, Math.ceil(titulo.length * 0.6))
   return `${titulo.slice(0, corte).trimEnd()}…`
+}
+
+/**
+ * Lección a la que el estudiante de la sesión SÍ tiene acceso:
+ * curso publicado + Enrollment + (sección accesible por ModuleAccess o
+ * lección isPreview). Cualquier otro caso → NOT_FOUND idéntico al de
+ * "no existe": una lección 🔒 no revela nada aunque se adivine el id.
+ */
+async function leccionAccesible(ctx: Context & { user: SessionUser }, leccionId: string) {
+  const leccion = await ctx.prisma.lesson.findUnique({
+    where: { id: leccionId },
+    include: { section: { select: { id: true, title: true, courseId: true } } },
+  })
+  if (!leccion) {
+    throw new TRPCError({ code: 'NOT_FOUND', message: 'Lección no encontrada.' })
+  }
+
+  const inscripcion = await inscripcionEnCursoPublicado(ctx, leccion.section.courseId)
+  const { accesoTotal, ids: idsAccesibles } = seccionesAccesibles(inscripcion)
+  const accesible = accesoTotal || idsAccesibles.has(leccion.section.id) || leccion.isPreview
+  if (!accesible) {
+    throw new TRPCError({ code: 'NOT_FOUND', message: 'Lección no encontrada.' })
+  }
+  return { leccion, inscripcion }
 }
 
 export const estudianteRouter = router({
@@ -355,33 +380,20 @@ export const estudianteRouter = router({
         tipo: z.enum(['VIDEO', 'PDF', 'QUIZ', 'TEXT']),
         duracion: z.number().int().nullable(),
         estado: estadoLeccion,
+        tieneVideo: z.boolean(), // VIDEO con video ya procesado por el worker
+        ultimaPosicion: z.number().int(), // segundos — para reanudar reproducción
         curso: z.object({ id: z.string(), titulo: z.string() }),
         seccionTitulo: z.string(),
       }),
     )
     .query(async ({ ctx, input }) => {
-      const leccion = await ctx.prisma.lesson.findUnique({
-        where: { id: input.id },
-        include: { section: { select: { id: true, title: true, courseId: true } } },
-      })
-      if (!leccion) {
-        throw new TRPCError({ code: 'NOT_FOUND', message: 'Lección no encontrada.' })
-      }
-
-      const inscripcion = await inscripcionEnCursoPublicado(ctx, leccion.section.courseId)
-      const { accesoTotal, ids: idsAccesibles } = seccionesAccesibles(inscripcion)
-      const accesible =
-        accesoTotal || idsAccesibles.has(leccion.section.id) || leccion.isPreview
-      if (!accesible) {
-        // Mismo error que "no existe" — no revelar qué hay detrás del candado
-        throw new TRPCError({ code: 'NOT_FOUND', message: 'Lección no encontrada.' })
-      }
+      const { leccion, inscripcion } = await leccionAccesible(ctx, input.id)
 
       const progreso = await ctx.prisma.progress.findUnique({
         where: { enrollmentId_lessonId: { enrollmentId: inscripcion.id, lessonId: leccion.id } },
-        select: { completedAt: true },
+        select: { completedAt: true, lastPosition: true },
       })
-      const titulo = await ctx.prisma.course.findUniqueOrThrow({
+      const curso = await ctx.prisma.course.findUniqueOrThrow({
         where: { id: leccion.section.courseId },
         select: { id: true, title: true },
       })
@@ -396,8 +408,98 @@ export const estudianteRouter = router({
             ? ('COMPLETADA' as const)
             : ('EN_PROGRESO' as const)
           : ('PENDIENTE' as const),
-        curso: { id: titulo.id, titulo: titulo.title },
+        tieneVideo: leccion.videoId !== null,
+        ultimaPosicion: progreso?.lastPosition ?? 0,
+        curso: { id: curso.id, titulo: curso.title },
         seccionTitulo: leccion.section.title,
+      }
+    }),
+
+  /**
+   * URL de reproducción de una lección VIDEO accesible — firmada ON-DEMAND
+   * con TTL 30 min (regla de seguridad #10: nunca se guarda en BD ni se
+   * entrega sin verificar acceso). El cliente la renueva antes de expirar.
+   */
+  videoLeccion: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .output(
+      z.object({
+        url: z.string(),
+        // El mock local sirve el archivo crudo; con Cloudflare Stream real
+        // será el manifest HLS (application/x-mpegurl) — ajustar entonces.
+        tipo: z.literal('video/mp4'),
+        expiraEn: z.date(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const { leccion } = await leccionAccesible(ctx, input.id)
+      if (leccion.type !== 'VIDEO' || !leccion.videoId) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Lección no encontrada.' })
+      }
+      const firmada = await obtenerStream().urlReproduccion(leccion.videoId)
+      return { url: firmada.url, tipo: 'video/mp4' as const, expiraEn: firmada.expiraEn }
+    }),
+
+  /**
+   * Guardar posición de reproducción (el cliente la manda cada ~15 s).
+   * La completitud al 80% se decide AQUÍ con la duración de BD — nunca se
+   * confía en lo que declare el cliente — y es pegajosa (no se des-completa).
+   */
+  progresoVideo: protectedProcedure
+    .input(
+      z.object({
+        leccionId: z.string(),
+        posicionSegundos: z
+          .number()
+          .int()
+          .min(0)
+          .max(60 * 60 * 24), // sanidad: nadie reproduce más de 24 h
+      }),
+    )
+    .output(z.object({ estado: estadoLeccion, completadaAhora: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      const { leccion, inscripcion } = await leccionAccesible(ctx, input.leccionId)
+      if (leccion.type !== 'VIDEO' || !leccion.videoId) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Lección no encontrada.' })
+      }
+
+      // La posición nunca rebasa la duración conocida (datos de BD, no del cliente)
+      const posicion =
+        leccion.duration !== null ? Math.min(input.posicionSegundos, leccion.duration) : input.posicionSegundos
+
+      const previo = await ctx.prisma.progress.findUnique({
+        where: {
+          enrollmentId_lessonId: { enrollmentId: inscripcion.id, lessonId: leccion.id },
+        },
+      })
+
+      const yaCompletada = previo?.completedAt != null
+      const superaUmbral =
+        leccion.duration !== null && leccion.duration > 0 && posicion >= leccion.duration * 0.8
+      const completadaAhora = !yaCompletada && superaUmbral
+
+      await ctx.prisma.progress.upsert({
+        where: {
+          enrollmentId_lessonId: { enrollmentId: inscripcion.id, lessonId: leccion.id },
+        },
+        create: {
+          enrollmentId: inscripcion.id,
+          lessonId: leccion.id,
+          lastPosition: posicion,
+          watchedSeconds: posicion,
+          completedAt: completadaAhora ? new Date() : null,
+        },
+        update: {
+          lastPosition: posicion,
+          // watchedSeconds = posición máxima alcanzada — nunca retrocede
+          watchedSeconds: Math.max(previo?.watchedSeconds ?? 0, posicion),
+          ...(completadaAhora && { completedAt: new Date() }),
+        },
+      })
+
+      return {
+        estado: yaCompletada || completadaAhora ? ('COMPLETADA' as const) : ('EN_PROGRESO' as const),
+        completadaAhora,
       }
     }),
 })

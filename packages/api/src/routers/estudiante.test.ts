@@ -2,13 +2,18 @@
 // Regla crítica: solo cursos asignados via Enrollment y PUBLISHED —
 // nunca cursos de otros estudiantes ni borradores/archivados.
 
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
 process.env.DATABASE_URL ??= 'postgresql://amatla:amatla_dev@localhost:5432/amatla_dev'
 
 const { prisma } = await import('@amatla/db')
+const { StreamLocal } = await import('@amatla/storage')
 const { createCaller } = await import('../root.js')
 const { createContextInner } = await import('../context.js')
+const { __setStream } = await import('../stream.js')
 
 type SessionUser = import('../context.js').SessionUser
 
@@ -103,7 +108,19 @@ async function restringirASeccion1() {
   })
 }
 
+const UID_VIDEO = '11112222333344445555666677778888'
+let directorioStream: string
+
 beforeAll(async () => {
+  directorioStream = await mkdtemp(join(tmpdir(), 'amatla-estudiante-'))
+  __setStream(
+    new StreamLocal({
+      directorio: directorioStream,
+      urlBase: 'http://localhost:3000/api/stream-dev',
+      secreto: 'secreto-test',
+    }),
+  )
+
   for (const u of [INSTRUCTORA, ESTUDIANTE, OTRA_ESTUDIANTE]) {
     await prisma.user.upsert({
       where: { id: u.id },
@@ -124,6 +141,10 @@ beforeAll(async () => {
   cursoNoAsignadoId = (await crearCurso({ titulo: 'Curso ajeno', status: 'PUBLISHED', conLecciones: true })).id
   cursoBorradorId = (await crearCurso({ titulo: 'Curso borrador', status: 'DRAFT' })).id
 
+  // Lecciones 1 y 3 con video ya procesado (enlace que en la vida real hace el worker)
+  await prisma.lesson.update({ where: { id: leccion1Id }, data: { videoId: UID_VIDEO } })
+  await prisma.lesson.update({ where: { id: leccion3Id }, data: { videoId: UID_VIDEO } })
+
   const inscripcion = await prisma.enrollment.create({
     data: { studentId: ESTUDIANTE.id, courseId: cursoAsignadoId, assignedBy: INSTRUCTORA.id },
   })
@@ -141,6 +162,8 @@ beforeEach(async () => {
 })
 
 afterAll(async () => {
+  __setStream(null)
+  await rm(directorioStream, { recursive: true, force: true })
   await prisma.progress.deleteMany({ where: { enrollment: { studentId: ESTUDIANTE.id } } })
   await prisma.calendarEvent.deleteMany({ where: { createdBy: INSTRUCTORA.id } })
   await prisma.enrollment.deleteMany({ where: { studentId: ESTUDIANTE.id } })
@@ -375,5 +398,98 @@ describe('estudiante.dashboard — sesiones en vivo', () => {
     expect(r.sesiones.map((s) => s.titulo)).toEqual(['Sesión próxima', 'Sesión mañana'])
     expect(r.sesiones[1]!.meetUrl).toBe('https://meet.google.com/test')
     expect(r.sesiones[0]!.cursoTitulo).toBe('Curso asignado')
+  })
+})
+
+describe('estudiante.videoLeccion — URL firmada on-demand', () => {
+  it('lección VIDEO accesible: URL firmada con TTL ≤ 30 min (regla #10)', async () => {
+    const r = await callerComo(ESTUDIANTE).estudiante.videoLeccion({ id: leccion1Id })
+    expect(r.url).toContain(`/api/stream-dev/${UID_VIDEO}`)
+    expect(r.url).toContain('firma=')
+    expect(r.tipo).toBe('video/mp4')
+    expect(r.expiraEn.getTime()).toBeLessThanOrEqual(Date.now() + 30 * 60 * 1000)
+  })
+
+  it('VIDEO sin procesar, lección PDF y sección bloqueada: NOT_FOUND', async () => {
+    // leccion2 es VIDEO pero sin videoId (el worker aún no la enlaza)
+    await expect(
+      callerComo(ESTUDIANTE).estudiante.videoLeccion({ id: leccion2Id }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+    // leccion4 es PDF
+    await expect(
+      callerComo(ESTUDIANTE).estudiante.videoLeccion({ id: leccion4Id }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+    // leccion3 tiene video pero su sección queda bloqueada
+    await restringirASeccion1()
+    await expect(
+      callerComo(ESTUDIANTE).estudiante.videoLeccion({ id: leccion3Id }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+  })
+})
+
+describe('estudiante.progresoVideo — posición y completitud al 80%', () => {
+  it('crea el progreso y watchedSeconds nunca retrocede aunque la posición sí', async () => {
+    const caller = callerComo(ESTUDIANTE)
+    await caller.estudiante.progresoVideo({ leccionId: leccion1Id, posicionSegundos: 600 })
+
+    let fila = await prisma.progress.findUniqueOrThrow({
+      where: { enrollmentId_lessonId: { enrollmentId: inscripcionId, lessonId: leccion1Id } },
+    })
+    expect(fila.lastPosition).toBe(600)
+    expect(fila.watchedSeconds).toBe(600)
+    expect(fila.completedAt).toBeNull()
+
+    // El estudiante regresa al minuto 2: lastPosition baja, watchedSeconds no
+    await caller.estudiante.progresoVideo({ leccionId: leccion1Id, posicionSegundos: 120 })
+    fila = await prisma.progress.findUniqueOrThrow({
+      where: { enrollmentId_lessonId: { enrollmentId: inscripcionId, lessonId: leccion1Id } },
+    })
+    expect(fila.lastPosition).toBe(120)
+    expect(fila.watchedSeconds).toBe(600)
+  })
+
+  it('completa al superar el 80% de la duración de BD y es pegajosa', async () => {
+    const caller = callerComo(ESTUDIANTE)
+    // duración 1800 → umbral 1440. A 1439 NO completa:
+    let r = await caller.estudiante.progresoVideo({ leccionId: leccion1Id, posicionSegundos: 1439 })
+    expect(r.estado).toBe('EN_PROGRESO')
+    expect(r.completadaAhora).toBe(false)
+
+    r = await caller.estudiante.progresoVideo({ leccionId: leccion1Id, posicionSegundos: 1440 })
+    expect(r.estado).toBe('COMPLETADA')
+    expect(r.completadaAhora).toBe(true)
+
+    // Volver a ver desde el inicio no des-completa
+    r = await caller.estudiante.progresoVideo({ leccionId: leccion1Id, posicionSegundos: 30 })
+    expect(r.estado).toBe('COMPLETADA')
+    expect(r.completadaAhora).toBe(false)
+    const fila = await prisma.progress.findUniqueOrThrow({
+      where: { enrollmentId_lessonId: { enrollmentId: inscripcionId, lessonId: leccion1Id } },
+    })
+    expect(fila.completedAt).not.toBeNull()
+  })
+
+  it('recorta la posición a la duración de BD (no confiar en el cliente)', async () => {
+    // 5000 pasa la sanidad de Zod (≤ 86400) pero excede la duración real (1800)
+    await callerComo(ESTUDIANTE).estudiante.progresoVideo({
+      leccionId: leccion1Id,
+      posicionSegundos: 5000,
+    })
+    const fila = await prisma.progress.findUniqueOrThrow({
+      where: { enrollmentId_lessonId: { enrollmentId: inscripcionId, lessonId: leccion1Id } },
+    })
+    expect(fila.lastPosition).toBe(1800)
+  })
+
+  it('lección bloqueada o de otro estudiante: NOT_FOUND y sin progreso escrito', async () => {
+    await restringirASeccion1()
+    await expect(
+      callerComo(ESTUDIANTE).estudiante.progresoVideo({ leccionId: leccion3Id, posicionSegundos: 60 }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+    await expect(
+      callerComo(OTRA_ESTUDIANTE).estudiante.progresoVideo({ leccionId: leccion1Id, posicionSegundos: 60 }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+    const filas = await prisma.progress.count({ where: { enrollmentId: inscripcionId } })
+    expect(filas).toBe(0)
   })
 })
