@@ -1,13 +1,13 @@
 # 📌 Estado del Proyecto: Plataforma E-Learning
-- **Última actualización:** 2026-06-13 (sesión 8) — Fase 4: 4.8 (panel de admin: usuarios, rol, activar/desactivar) COMPLETA, en modo orquestador (2 ejecutores Sonnet: backend+tests y frontend; orquestador revisó/verificó/commiteó). 223 tests.
-- **Fase Actual:** Fase 4 (MVP completo) — 4.0–4.8 ✅; siguiente: 4.9 (vista de progreso del estudiante para el instructor — última del MVP)
+- **Última actualización:** 2026-06-13 (sesión 8) — Fase 4: 4.9 (vista de progreso del estudiante para el instructor) COMPLETA. **Fase 4 (features del MVP) CERRADA: 4.1–4.9 ✅.** 229 tests. Modo orquestador (ejecutores Sonnet; orquestador revisó/verificó/commiteó).
+- **Fase Actual:** Fase 4 ✅ (features del MVP completas). **Pendiente para usar el MVP de punta a punta en local: AUTH REAL (Google login / Magic Link) — hoy solo se entra con `/api/dev-login`.** Ver "Pendientes del prompt maestro" más abajo. Siguiente: cerrar auth real → Fase 5 (calidad/CI).
 - **Objetivo del Sprint:** Cerrar el MVP: asignación, progreso secuencial, quiz, editor TEXT, panel admin, progreso por estudiante (certificado/email/granular/móvil DIFERIDOS)
 
 ## 📋 Roadmap Global (v3.0 — MVP sin chatbot IA)
 - [x] Fase 1: Infraestructura y Auth ✅ (2026-06-11)
 - [x] Fase 2: Gestión de Cursos ✅ (2026-06-12)
 - [x] Fase 3: Experiencia del Estudiante ✅ (2026-06-13)
-- [ ] Fase 4: MVP Completo — Asignación + Progreso Secuencial + Quiz + Certificado (EN CURSO)
+- [x] Fase 4: MVP Completo — Asignación + Progreso Secuencial + Quiz + Panel admin + Progreso ✅ (2026-06-13) — features cerradas; falta auth real para uso e2e
 - [ ] Fase 5: Calidad + CI/CD completo + App Móvil base
 - [ ] Fase 6: IA con Claude — chatbot de estudio (Post-MVP, fecha a decidir)
 
@@ -34,7 +34,7 @@
 - [x] **4.6** Quiz UI instructor: gestión de preguntas + passingScore ✅ (2026-06-13)
 - [x] **4.7** Quiz UI estudiante: formulario + feedback + reintento ✅ (2026-06-13)
 - [x] **4.8** Panel de admin: tabla de usuarios, cambiar rol, activar/desactivar ✅ (2026-06-13)
-- [ ] **4.9** Vista de progreso del estudiante para el instructor (lección por lección)
+- [x] **4.9** Vista de progreso del estudiante para el instructor (lección por lección) ✅ (2026-06-13)
 
 > ⏸️ **DIFERIDO — fuera del MVP actual (no trabajar hasta nuevo aviso, decisión usuario 2026-06-13):**
 > certificado PDF, notificaciones email (Resend), asignación granular por secciones (ModuleAccess)
@@ -71,6 +71,21 @@
 - [x] Preview de lección + publicar/archivar con validación
 
 ## 🧠 Memoria de Decisiones (ADRs)
+
+### ADR — 2026-06-13 — Vista de progreso del estudiante para el instructor (Fase 4, tarea 4.9)
+Cierra las features del MVP. **Backend** — router `progreso` (`packages/api/src/routers/progreso.ts`,
+montado en `root.ts`), `instructorProcedure` + `cursoPropio` (ownership): `curso({ cursoId })`
+(resumen por estudiante: % completado, lecciones completadas, último acceso = máx `Progress.updatedAt`)
+y `estudiante({ cursoId, studentId })` (detalle por sección/lección: estado COMPLETADA/EN_PROGRESO/
+PENDIENTE, `completadaEl`, e `intentoQuiz` {score, passed, fecha} para las QUIZ; NOT_FOUND si el
+estudiante no está inscrito). 6 tests (RBAC FORBIDDEN, ownership cruzado NOT_FOUND, cálculo de %,
+estados, intento de quiz, no inscrito). **Frontend** (server components, sin cliente): página
+`/instructor/cursos/[id]/progreso` (tabla/tarjetas con barra de progreso, % , último acceso, "Ver
+detalle") y `/instructor/cursos/[id]/progreso/[studentId]` (detalle por sección con icono de estado,
+badge de tipo, fecha de completado y resultado del quiz); enlace "Progreso" (icono BarChart3) en la
+cabecera del curso del instructor. **Verificación:** 128 tests API + type-check web + smoke HTTP
+(resumen y detalle 200 con curso-dev-1/dev-student-1). **229 tests** en total. Modo orquestador
+(2 ejecutores Sonnet: backend+tests y frontend; orquestador revisó/verificó/commiteó).
 
 ### ADR — 2026-06-13 — Panel de admin (Fase 4, tarea 4.8) — modo orquestador (2 ejecutores)
 **Backend** — router `admin` (`packages/api/src/routers/admin.ts`, montado en `root.ts`), TODO
