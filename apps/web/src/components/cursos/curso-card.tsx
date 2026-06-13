@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { Clock3, PlayCircle, CheckCircle2 } from 'lucide-react'
 import type { CursoAsignado } from '@/lib/tipos-estudiante'
 import { formatearDuracion } from '@/lib/formato'
@@ -38,7 +39,10 @@ export function CursoCard({ curso }: { curso: CursoAsignado }) {
   const completado = curso.progreso === 100
 
   return (
-    <article className="group flex flex-col overflow-hidden rounded-card bg-white shadow-card transition-all hover:-translate-y-0.5 hover:shadow-lg">
+    <Link
+      href={`/cursos/${curso.id}`}
+      className="group flex flex-col overflow-hidden rounded-card bg-white shadow-card transition-all hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-secondary"
+    >
       {/* Miniatura generativa */}
       <div
         className="relative flex h-36 items-end overflow-hidden p-4"
@@ -100,6 +104,6 @@ export function CursoCard({ curso }: { curso: CursoAsignado }) {
           )}
         </div>
       </div>
-    </article>
+    </Link>
   )
 }

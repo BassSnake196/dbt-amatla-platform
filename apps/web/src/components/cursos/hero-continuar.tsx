@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { Play } from 'lucide-react'
 import type { EnCurso } from '@/lib/tipos-estudiante'
 import { formatearDuracion } from '@/lib/formato'
@@ -27,13 +28,13 @@ export function HeroContinuar({ enCurso }: { enCurso: EnCurso }) {
             Lección {enCurso.leccionNumero} · {enCurso.leccionTitulo}
           </p>
           <div className="mt-6 flex flex-wrap items-center gap-4">
-            <button
-              type="button"
+            <Link
+              href={`/cursos/${enCurso.cursoId}/lecciones/${enCurso.leccionId}`}
               className="inline-flex items-center gap-2 rounded-full bg-brand-primary px-6 py-3 text-sm font-semibold text-brand-dark transition-transform hover:scale-[1.02] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
             >
               <Play size={16} fill="currentColor" aria-hidden="true" />
               Continuar lección
-            </button>
+            </Link>
             {enCurso.restanteSegundos > 0 && (
               <span className="text-sm text-white/60">
                 {formatearDuracion(enCurso.restanteSegundos)} restantes

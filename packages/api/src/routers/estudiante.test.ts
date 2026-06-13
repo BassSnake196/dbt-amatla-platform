@@ -40,6 +40,8 @@ const OTRA_ESTUDIANTE: SessionUser = {
 // Curso publicado y asignado: 2 secciones, 4 lecciones (1800s c/u donde aplica)
 let cursoAsignadoId: string
 let inscripcionId: string
+let seccion1Id: string
+let seccion2Id: string
 let leccion1Id: string
 let leccion2Id: string
 let leccion3Id: string
@@ -94,6 +96,13 @@ async function crearCurso(opts: {
   })
 }
 
+// Acceso granular: dejar visible SOLO la sección 1 de la inscripción
+async function restringirASeccion1() {
+  await prisma.moduleAccess.create({
+    data: { enrollmentId: inscripcionId, sectionId: seccion1Id, grantedBy: INSTRUCTORA.id },
+  })
+}
+
 beforeAll(async () => {
   for (const u of [INSTRUCTORA, ESTUDIANTE, OTRA_ESTUDIANTE]) {
     await prisma.user.upsert({
@@ -105,6 +114,8 @@ beforeAll(async () => {
 
   const asignado = await crearCurso({ titulo: 'Curso asignado', status: 'PUBLISHED', conLecciones: true })
   cursoAsignadoId = asignado.id
+  seccion1Id = asignado.sections[0]!.id
+  seccion2Id = asignado.sections[1]!.id
   leccion1Id = asignado.sections[0]!.lessons[0]!.id
   leccion2Id = asignado.sections[0]!.lessons[1]!.id
   leccion3Id = asignado.sections[1]!.lessons[0]!.id
@@ -126,6 +137,7 @@ beforeAll(async () => {
 beforeEach(async () => {
   await prisma.progress.deleteMany({ where: { enrollmentId: inscripcionId } })
   await prisma.calendarEvent.deleteMany({ where: { createdBy: INSTRUCTORA.id } })
+  await prisma.moduleAccess.deleteMany({ where: { enrollmentId: inscripcionId } })
 })
 
 afterAll(async () => {
@@ -227,6 +239,118 @@ describe('estudiante.dashboard — progreso y hero', () => {
     const r = await callerComo(ESTUDIANTE).estudiante.dashboard()
     expect(r.cursos.find((c) => c.id === cursoAsignadoId)!.progreso).toBe(100)
     expect(r.enCurso).toBeNull()
+  })
+})
+
+describe('estudiante.curso — vista con estado por lección', () => {
+  it('rechaza sin sesión, sin inscripción y con curso no publicado', async () => {
+    await expect(callerComo(null).estudiante.curso({ id: cursoAsignadoId })).rejects.toMatchObject({
+      code: 'UNAUTHORIZED',
+    })
+    // Publicado pero sin Enrollment — mismo NOT_FOUND que un curso inexistente
+    await expect(
+      callerComo(ESTUDIANTE).estudiante.curso({ id: cursoNoAsignadoId }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+    // Asignado pero en borrador
+    await expect(
+      callerComo(ESTUDIANTE).estudiante.curso({ id: cursoBorradorId }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+  })
+
+  it('sin ModuleAccess: acceso total con estados ✓ / en progreso / pendiente', async () => {
+    await prisma.progress.create({
+      data: { enrollmentId: inscripcionId, lessonId: leccion1Id, watchedSeconds: 1800, completedAt: new Date() },
+    })
+    await prisma.progress.create({
+      data: { enrollmentId: inscripcionId, lessonId: leccion2Id, watchedSeconds: 600 },
+    })
+
+    const r = await callerComo(ESTUDIANTE).estudiante.curso({ id: cursoAsignadoId })
+    expect(r.secciones.every((s) => s.accesible)).toBe(true)
+    expect(r.progreso).toBe(25)
+    expect(r.leccionesTotales).toBe(4)
+    expect(r.leccionesCompletadas).toBe(1)
+
+    const estados = new Map(
+      r.secciones.flatMap((s) => s.lecciones).map((l) => [l.id, l.estado]),
+    )
+    expect(estados.get(leccion1Id)).toBe('COMPLETADA')
+    expect(estados.get(leccion2Id)).toBe('EN_PROGRESO')
+    expect(estados.get(leccion3Id)).toBe('PENDIENTE')
+    expect(estados.get(leccion4Id)).toBe('PENDIENTE')
+  })
+
+  it('con ModuleAccess a la sección 1: la sección 2 va 🔒 con títulos enmascarados', async () => {
+    await restringirASeccion1()
+
+    const r = await callerComo(ESTUDIANTE).estudiante.curso({ id: cursoAsignadoId })
+    const s1 = r.secciones.find((s) => s.id === seccion1Id)!
+    const s2 = r.secciones.find((s) => s.id === seccion2Id)!
+    expect(s1.accesible).toBe(true)
+    expect(s2.accesible).toBe(false)
+
+    for (const leccion of s2.lecciones) {
+      expect(leccion.estado).toBe('BLOQUEADA')
+      expect(leccion.duracion).toBeNull()
+      expect(leccion.titulo.endsWith('…')).toBe(true)
+    }
+    // El título completo NUNCA viaja: "Lección tres" se recorta
+    const bloqueada = s2.lecciones.find((l) => l.id === leccion3Id)!
+    expect(bloqueada.titulo).not.toBe('Lección tres')
+    expect('Lección tres'.startsWith(bloqueada.titulo.slice(0, -1))).toBe(true)
+  })
+
+  it('una lección isPreview es visible aunque su sección esté bloqueada', async () => {
+    await restringirASeccion1()
+    await prisma.lesson.update({ where: { id: leccion4Id }, data: { isPreview: true } })
+    try {
+      const r = await callerComo(ESTUDIANTE).estudiante.curso({ id: cursoAsignadoId })
+      const s2 = r.secciones.find((s) => s.id === seccion2Id)!
+      const preview = s2.lecciones.find((l) => l.id === leccion4Id)!
+      expect(preview.titulo).toBe('Material cuatro')
+      expect(preview.estado).toBe('PENDIENTE')
+      // Las demás de la sección siguen bloqueadas
+      expect(s2.lecciones.find((l) => l.id === leccion3Id)!.estado).toBe('BLOQUEADA')
+    } finally {
+      await prisma.lesson.update({ where: { id: leccion4Id }, data: { isPreview: false } })
+    }
+  })
+})
+
+describe('estudiante.leccion — acceso a una lección', () => {
+  it('devuelve metadata de una lección accesible con su estado', async () => {
+    await prisma.progress.create({
+      data: { enrollmentId: inscripcionId, lessonId: leccion1Id, watchedSeconds: 1800, completedAt: new Date() },
+    })
+    const r = await callerComo(ESTUDIANTE).estudiante.leccion({ id: leccion1Id })
+    expect(r.titulo).toBe('Lección uno')
+    expect(r.estado).toBe('COMPLETADA')
+    expect(r.curso.id).toBe(cursoAsignadoId)
+    expect(r.seccionTitulo).toBe('Sección uno')
+  })
+
+  it('una lección de sección bloqueada da NOT_FOUND aunque se conozca el id', async () => {
+    await restringirASeccion1()
+    await expect(
+      callerComo(ESTUDIANTE).estudiante.leccion({ id: leccion3Id }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+    // ...pero una isPreview de esa misma sección sí se entrega
+    await prisma.lesson.update({ where: { id: leccion4Id }, data: { isPreview: true } })
+    try {
+      const r = await callerComo(ESTUDIANTE).estudiante.leccion({ id: leccion4Id })
+      expect(r.titulo).toBe('Material cuatro')
+    } finally {
+      await prisma.lesson.update({ where: { id: leccion4Id }, data: { isPreview: false } })
+    }
+  })
+
+  it('sin inscripción al curso: NOT_FOUND; id inexistente: NOT_FOUND', async () => {
+    await expect(
+      callerComo(OTRA_ESTUDIANTE).estudiante.leccion({ id: leccion1Id }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+    await expect(
+      callerComo(ESTUDIANTE).estudiante.leccion({ id: 'no-existe' }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
   })
 })
 
