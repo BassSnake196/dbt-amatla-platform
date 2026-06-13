@@ -43,18 +43,31 @@ export function CursoCard({ curso }: { curso: CursoAsignado }) {
       href={`/cursos/${curso.id}`}
       className="group flex flex-col overflow-hidden rounded-card bg-white shadow-card transition-all hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-secondary"
     >
-      {/* Miniatura generativa */}
+      {/* Miniatura: thumbnail real del instructor si existe, si no arte generativo.
+          URL firmada (expira) → <img> nativo, no next/image. */}
       <div
         className="relative flex h-36 items-end overflow-hidden p-4"
-        style={{ background: arte.fondo }}
-        aria-hidden="true"
+        style={curso.thumbnailUrl ? undefined : { background: arte.fondo }}
       >
-        <span
-          className="pointer-events-none absolute -right-2 -top-9 select-none font-serif text-[9rem] leading-none transition-transform duration-300 group-hover:scale-105"
-          style={{ color: arte.psi }}
-        >
-          Ψ
-        </span>
+        {curso.thumbnailUrl ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={curso.thumbnailUrl}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            />
+            <span className="absolute inset-0 bg-gradient-to-t from-black/45 to-transparent" aria-hidden="true" />
+          </>
+        ) : (
+          <span
+            className="pointer-events-none absolute -right-2 -top-9 select-none font-serif text-[9rem] leading-none transition-transform duration-300 group-hover:scale-105"
+            style={{ color: arte.psi }}
+            aria-hidden="true"
+          >
+            Ψ
+          </span>
+        )}
         <span className="relative rounded-full bg-black/25 px-3 py-1 text-[11px] font-medium text-white backdrop-blur-sm">
           {curso.categoria}
         </span>

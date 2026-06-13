@@ -18,6 +18,9 @@ const cursoAsignado = z.object({
   titulo: z.string(),
   instructora: z.string(),
   categoria: z.string(),
+  // URL firmada on-demand del thumbnail (regla #10: nunca se guarda la URL);
+  // null cuando el instructor no subió uno — la UI cae al arte generativo
+  thumbnailUrl: z.string().nullable(),
   lecciones: z.number().int(),
   duracionSegundos: z.number().int(),
   progreso: z.number().int().min(0).max(100), // % de lecciones completadas
@@ -185,6 +188,7 @@ export const estudianteRouter = router({
               id: true,
               title: true,
               category: true,
+              thumbnail: true,
               totalDuration: true,
               instructor: { select: { name: true } },
               sections: {
@@ -227,6 +231,9 @@ export const estudianteRouter = router({
         titulo: inscripcion.course.title,
         instructora: inscripcion.course.instructor.name ?? 'Equipo DBT.Amatla',
         categoria: inscripcion.course.category,
+        thumbnailUrl: inscripcion.course.thumbnail
+          ? obtenerAlmacen().urlLectura(inscripcion.course.thumbnail).url
+          : null,
         lecciones: lecciones.length,
         duracionSegundos: inscripcion.course.totalDuration,
         progreso,
