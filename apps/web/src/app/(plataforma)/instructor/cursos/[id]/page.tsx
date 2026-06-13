@@ -23,9 +23,13 @@ export default async function EstructuraCursoPage({
   const { id } = await params
 
   const api = await apiServer()
-  const curso = await api.cursos.obtener({ id }).catch(() => null)
+  // En paralelo: ownership/datos del curso y sus secciones (antes eran 2 awaits
+  // secuenciales). Si el curso no es del instructor, ambas fallan → notFound.
+  const [curso, secciones] = await Promise.all([
+    api.cursos.obtener({ id }).catch(() => null),
+    api.secciones.listar({ cursoId: id }).catch(() => []),
+  ])
   if (!curso) notFound()
-  const secciones = await api.secciones.listar({ cursoId: id })
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">

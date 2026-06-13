@@ -4,7 +4,7 @@
 // cola media — el enlace de la lección lo hace el worker, nunca este handler.
 
 import { z } from 'zod'
-import { encolarProcesamientoVideo } from '@amatla/api'
+import { encolarProcesamientoVideo } from '@amatla/api/cola-media'
 import { verificarFirmaWebhookStream } from '@amatla/storage'
 
 const payloadStream = z.object({

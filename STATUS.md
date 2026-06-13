@@ -72,6 +72,31 @@
 
 ## 🧠 Memoria de Decisiones (ADRs)
 
+### ADR — 2026-06-13 — Rendimiento percibido (requisito permanente)
+**Requisito del usuario:** la app debe sentirse rápida; los cambios de pantalla NO deben
+congelarse y toda espera lleva animación de carga. Aplica a TODAS las tareas en adelante.
+**Causas detectadas en local:** (1) no existía NINGÚN `loading.tsx` → cada navegación se
+congelaba esperando el server component completo (auth + queries) antes de pintar nada;
+(2) el índice de `@amatla/api` re-exportaba `cola-media` y el router `archivos` lo importaba
+estático → BullMQ + ioredis entraban al grafo síncrono de TODA página que usa `apiServer()`
+(de ahí el warning "Critical dependency" de bullmq y compilaciones de dev más pesadas).
+**Cambios:**
+- `apps/web/src/app/(plataforma)/loading.tsx` global + componente `Cargando`
+  (`components/layout/cargando.tsx`, spinner de marca con `role=status`). Cubre todas las
+  rutas de la plataforma; muestra carga al instante en cada navegación.
+- `archivos.ts`: `encolarEscaneo` ahora se carga con `await import('../cola-media.js')` dentro
+  del resolver (chunk diferido, fuera del grafo síncrono).
+- `@amatla/api`: se quitó el re-export de `cola-media` del índice; se añadió `exports` map con
+  subpath `./cola-media`; el webhook de Stream importa de `@amatla/api/cola-media`.
+- Página de estructura del curso (instructor): las 2 queries (curso + secciones) ahora van en
+  `Promise.all`.
+- Script `dev:turbo` (`next dev --turbopack`) para compilación de dev mucho más rápida (opt-in;
+  OJO: Turbopack ignora la regla webpack de pdfjs — probar el visor PDF si se usa).
+**Límite conocido:** en dev (webpack) la PRIMERA visita a una ruta siempre compila on-demand;
+`loading.tsx` no cubre eso (solo Turbopack). Verificado: 106 tests API verdes (incluido el de
+`archivos` que mockea `cola-media`) + `type-check` web en verde. NO se corrió `next build` para
+no perturbar el `.next` del dev en marcha.
+
 ### ADR — 2026-06-13 — Quiz UI instructor (Fase 4, tarea 4.6)
 **Solo frontend** — consume el router `quiz` de 4.5 (sin cambios de backend).
 **Página** `/instructor/cursos/[id]/lecciones/[leccionId]/quiz` (server component):

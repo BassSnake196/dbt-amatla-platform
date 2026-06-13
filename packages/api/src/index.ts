@@ -18,6 +18,6 @@ export {
   adminProcedure,
 } from './trpc.js'
 export { auditFromRequest, auditResource } from './audit.js'
-// Productor de la cola media — lo usa el webhook de Stream en apps/web
-// para encolar el procesamiento sin tocar BullMQ directamente.
-export { encolarProcesamientoVideo, type JobVideo } from './cola-media.js'
+// NOTA: la cola media (BullMQ) NO se re-exporta aquí a propósito — arrastraría
+// BullMQ + ioredis a TODA página de Next que importe @amatla/api (vía apiServer).
+// El webhook de Stream la consume por su subpath dedicado: '@amatla/api/cola-media'.

@@ -5,6 +5,7 @@
   "description": "Plataforma web — Next.js 15 (App Router)",
   "scripts": {
     "dev": "next dev",
+    "dev:turbo": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
     "type-check": "tsc --noEmit",

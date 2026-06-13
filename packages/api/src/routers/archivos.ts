@@ -14,7 +14,9 @@ import { TRPCError } from '@trpc/server'
 import { router, instructorProcedure } from '../trpc.js'
 import { auditFromRequest, auditResource } from '../audit.js'
 import { obtenerAlmacen } from '../almacen.js'
-import { encolarEscaneo } from '../cola-media.js'
+// `cola-media` arrastra BullMQ + ioredis (pesado). Se importa de forma
+// DIFERIDA dentro del resolver para que no entre al grafo síncrono del
+// appRouter — así las páginas de Next que solo consultan datos no lo compilan.
 import { cursoPropio } from './cursos.js'
 import { leccionPropia } from './lecciones.js'
 
@@ -166,6 +168,7 @@ export const archivosRouter = router({
         })
       }
 
+      const { encolarEscaneo } = await import('../cola-media.js')
       await encolarEscaneo({ uploadId: subida.id })
       return { ok: true as const }
     }),
