@@ -1,6 +1,6 @@
 # 📌 Estado del Proyecto: Plataforma E-Learning
-- **Última actualización:** 2026-06-13 (sesión 7) — Fase 4: 4.5 (quiz backend) + 4.6 (quiz UI instructor: gestor de preguntas dnd-kit + passingScore) COMPLETAS. Migración add_quiz. 207 tests.
-- **Fase Actual:** Fase 4 (MVP completo) — 4.0/4.1/4.2/4.3/4.4/4.5/4.6 ✅; siguiente: 4.7 (quiz UI estudiante)
+- **Última actualización:** 2026-06-13 (sesión 8) — Fase 4: 4.7 (quiz UI estudiante) COMPLETA, en modo orquestador (ejecutor Sonnet implementó, orquestador revisó/verificó/commiteó). 210 tests.
+- **Fase Actual:** Fase 4 (MVP completo) — 4.0–4.7 ✅; siguiente: 4.8 (panel de admin)
 - **Objetivo del Sprint:** Cerrar el MVP: asignación, progreso secuencial, quiz, editor TEXT, panel admin, progreso por estudiante (certificado/email/granular/móvil DIFERIDOS)
 
 ## 📋 Roadmap Global (v3.0 — MVP sin chatbot IA)
@@ -32,7 +32,7 @@
 - [x] **4.4** Editor de contenido TEXT con Tiptap (instructor) + vista renderizada (estudiante) ✅ (2026-06-13)
 - [x] **4.5** Quiz backend: router quiz, procedures CRUD preguntas + enviar intento ✅ (2026-06-13)
 - [x] **4.6** Quiz UI instructor: gestión de preguntas + passingScore ✅ (2026-06-13)
-- [ ] **4.7** Quiz UI estudiante: formulario + feedback + reintento
+- [x] **4.7** Quiz UI estudiante: formulario + feedback + reintento ✅ (2026-06-13)
 - [ ] **4.8** Panel de admin: tabla de usuarios, cambiar rol, activar/desactivar
 - [ ] **4.9** Vista de progreso del estudiante para el instructor (lección por lección)
 
@@ -71,6 +71,27 @@
 - [x] Preview de lección + publicar/archivar con validación
 
 ## 🧠 Memoria de Decisiones (ADRs)
+
+### ADR — 2026-06-13 — Quiz UI estudiante (Fase 4, tarea 4.7) — primera tarea en modo orquestador
+**Modelo de trabajo (nuevo):** se ejecutó con la jerarquía multi-agente (`Agentes.md`): el
+ORQUESTADOR (Opus) leyó contexto y contratos, redactó el prompt de subtarea y delegó la
+IMPLEMENTACIÓN a un EJECUTOR Sonnet 4.6; el orquestador hizo la revisión del diff, la
+verificación (type-check + smoke test), el commit y este ADR. El ejecutor no commiteó ni tocó
+backend/schema. **Solo frontend** (consume el router `quiz` de 4.5, sin cambios de backend).
+**Archivos:** `acciones/quiz-estudiante.ts` (`enviarIntentoAction` + tipos `FeedbackIntento`/
+`ResultadoPregunta`/`OpcionRespuesta`); `components/cursos/quiz-estudiante.tsx` (client);
+`page.tsx` (rama QUIZ). **Flujo:** el server component trae `quiz.preguntasEstudiante` (SIN la
+correcta) + `quiz.miIntento` (último intento serializado, sin la fecha) y los pasa al componente.
+Si hay intento previo → arranca en vista RESULTADO; si no → formulario con radios A/B/C/D, botón
+"Enviar respuestas" deshabilitado hasta responder todas + contador "X de N". Al enviar:
+`enviarIntento` (score en SERVIDOR) → vista RESULTADO con feedback por pregunta (correcta vs
+elegida + explicación, lícito tras el envío); si `passed` → `router.refresh()` (índice marca ✓ y
+desbloquea la siguiente); si reprueba → "Intentar de nuevo" (limpia estado, el backend sobrescribe
+el intento). Spinner `useTransition`+`Loader2` en el submit. **Seguridad verificada (smoke):** la
+página renderiza 200 y `correctOption` NO aparece en el HTML del formulario (regla #13).
+**Verificación:** type-check web en verde + smoke HTTP (curso/lección QUIZ + preguntas por SQL,
+dev-login estudiante). Sin tests automáticos nuevos (el backend de 4.5 ya está testeado). **210
+tests** en total siguen en verde.
 
 ### ADR — 2026-06-13 — Botón "Finalizar lección" manual para VIDEO/PDF
 **Pedido del usuario:** poder avanzar en el curso marcando la lección como terminada,

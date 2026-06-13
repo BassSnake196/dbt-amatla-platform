@@ -5,6 +5,7 @@ import { formatearDuracion } from '@/lib/formato'
 import { ReproductorVideo } from '@/components/cursos/reproductor-video'
 import { VisorPdfCliente } from '@/components/cursos/visor-pdf-cliente'
 import { BotonMarcarTerminada } from '@/components/cursos/boton-marcar-terminada'
+import { QuizEstudiante } from '@/components/cursos/quiz-estudiante'
 
 export const metadata = { title: 'Lección — DBT.Amatla' }
 
@@ -45,6 +46,26 @@ export default async function LeccionPage({
     texto: n.texto,
     actualizadaEl: n.actualizadaEl.toISOString(),
   }))
+
+  // Datos del quiz: preguntas (sin la respuesta correcta, regla #13) y el
+  // último intento del estudiante (si existe) para mostrar el feedback al reabrir
+  const quiz =
+    leccion.tipo === 'QUIZ'
+      ? await api.quiz.preguntasEstudiante({ leccionId }).catch(() => null)
+      : null
+  const miIntentoQuiz =
+    leccion.tipo === 'QUIZ'
+      ? await api.quiz.miIntento({ leccionId }).catch(() => null)
+      : null
+  // Serializa el intento para el client component (descarta la fecha Date)
+  const intentoQuiz = miIntentoQuiz
+    ? {
+        score: miIntentoQuiz.score,
+        passed: miIntentoQuiz.passed,
+        passingScore: miIntentoQuiz.passingScore,
+        resultados: miIntentoQuiz.resultados,
+      }
+    : null
 
   return (
     <article className="space-y-4">
@@ -144,12 +165,18 @@ export default async function LeccionPage({
         </div>
       )}
 
-      {leccion.tipo === 'QUIZ' && (
+      {leccion.tipo === 'QUIZ' && quiz && (
+        <QuizEstudiante
+          leccionId={leccion.id}
+          passingScore={quiz.passingScore}
+          preguntas={quiz.preguntas}
+          intentoInicial={intentoQuiz}
+        />
+      )}
+
+      {leccion.tipo === 'QUIZ' && !quiz && (
         <div className="flex min-h-64 items-center justify-center rounded-card bg-brand-surface p-10 text-center shadow-card">
-          <div className="text-neutral-900/60">
-            <NotebookText size={32} className="mx-auto text-brand-secondary" aria-hidden="true" />
-            <p className="mt-3 text-sm">El examen de esta lección estará disponible muy pronto.</p>
-          </div>
+          <p className="text-sm text-neutral-900/60">Este examen aún no está disponible.</p>
         </div>
       )}
     </article>
