@@ -72,6 +72,22 @@
 
 ## 🧠 Memoria de Decisiones (ADRs)
 
+### ADR — 2026-06-13 — Fix "InvalidPDFException: Invalid PDF structure" (seed de media)
+**Síntoma:** abrir la lección PDF del seed (`lec-dev-3`) lanzaba en consola
+`InvalidPDFException: Invalid PDF structure` (react-pdf/pdfjs). **Diagnóstico:** NO es
+del bundler (eso ya estaba resuelto con el polyfill + regla .mjs); el archivo almacenado
+era un placeholder MALFORMADO de 77 bytes (cabecera `%PDF-1.4` + `%%EOF` pero SIN `/Pages`
+ni tabla `xref`), creado en una sesión previa. Los PDFs reales subidos por el usuario
+(~426 KB) son válidos y renderizan bien. **Fix:** script `packages/db/seed-media.mjs`
+(`npm run db:seed-media -w @amatla/db`) que recorre las lecciones PDF y, para las que su
+archivo en `.almacen-dev` falte o esté malformado (sin `/Pages`/`xref`), escribe un PDF de
+una página VÁLIDO con la tabla `xref` de offsets calculados en bytes; NO toca los PDFs
+reales (se detectan válidos y se omiten). Verificado: `lec-dev-3` pasó de 77 → 610 bytes,
+`startxref` apunta exacto a `xref`, offsets de objeto correctos. El visor ya degradaba bien
+ante error (`onLoadError` → tarjeta de fallback); este fix corrige el dato de origen y deja
+los PDF del seed funcionando out-of-the-box tras correr el script. (El binario vive en
+`.almacen-dev`, gitignorado; lo reproducible es el script.)
+
 ### ADR — 2026-06-13 — Quiz UI estudiante (Fase 4, tarea 4.7) — primera tarea en modo orquestador
 **Modelo de trabajo (nuevo):** se ejecutó con la jerarquía multi-agente (`Agentes.md`): el
 ORQUESTADOR (Opus) leyó contexto y contratos, redactó el prompt de subtarea y delegó la
