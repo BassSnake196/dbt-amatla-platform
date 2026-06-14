@@ -1,5 +1,5 @@
 # 📌 Estado del Proyecto: Plataforma E-Learning
-- **Última actualización:** 2026-06-14 (sesión 10 — REDISEÑO) — Arranque de la sesión de rediseño visual. **Bloque 1 cerrado: FIX §15 (crear sección/lección sin reload).** Decisiones de flujo tomadas con el usuario: Inicio = mis cursos + descubrir público (sin muro vacío); Explorar dentro del shell; quitar "Mis cursos" del sidebar; stubs "Próximamente" para Calendario/Notificaciones/Configuración. Antes (sesión 9): catálogo público "General" + visibilidad (público/privado), migración `add_course_public`, 237 tests.
+- **Última actualización:** 2026-06-14 (sesión 10 — REDISEÑO) — Arranque de la sesión de rediseño visual. **Bloque 2 cerrado: tokens del sistema de diseño (redisenio §1).** Bloque 1 cerrado: FIX §15 (crear sección/lección sin reload). Decisiones de flujo tomadas con el usuario: Inicio = mis cursos + descubrir público (sin muro vacío); Explorar dentro del shell; quitar "Mis cursos" del sidebar; stubs "Próximamente" para Calendario/Notificaciones/Configuración. Antes (sesión 9): catálogo público "General" + visibilidad (público/privado), migración `add_course_public`, 237 tests.
 - **Fase Actual:** Fase 4 ✅ (features del MVP completas). **Pendiente para usar el MVP de punta a punta en local: AUTH REAL (Google login / Magic Link) — hoy solo se entra con `/api/dev-login`.** Ver "Pendientes del prompt maestro" más abajo. Siguiente: cerrar auth real → Fase 5 (calidad/CI).
 - **Objetivo del Sprint:** Cerrar el MVP: asignación, progreso secuencial, quiz, editor TEXT, panel admin, progreso por estudiante (certificado/email/granular/móvil DIFERIDOS)
 
@@ -71,6 +71,31 @@
 - [x] Preview de lección + publicar/archivar con validación
 
 ## 🧠 Memoria de Decisiones (ADRs)
+
+### ADR — 2026-06-14 (sesión 10, rediseño) — Bloque 2: tokens del sistema de diseño (redisenio §1)
+**Alcance:** SOLO tokens, cambio 100% aditivo (ejecutor Haiku 4.5; orquestador revisó/verificó/commiteó).
+2 archivos. **Decisión de naming (orquestador, aprobada por el usuario):** se CONSERVAN los tokens
+previos (`brand.*`, `neutral.*`, `danger`) para no romper vistas existentes (se rediseñan en bloques
+3–9) y se AÑADE el set semántico de §1 para que los ejecutores siguientes usen clases intuitivas.
+**globals.css** (`:root`): nuevos `--color-teal-suave #e8f4f0`, `--color-naranja-suave #fef3dc`,
+`--color-blanco #ffffff`, `--color-texto #1a1a1a`, `--color-texto-suave #6b6b6b`, `--color-borde
+#e5e0d8`, `--color-crema-hover #f2e4c4`; y alias `--color-fondo/sidebar/teal/naranja` que apuntan a
+los `--color-brand-*` ya existentes (misma fuente de verdad del color, sin hex duplicado divergente).
+**tailwind.config.ts** (`theme.extend.colors`): `fondo`, `sidebar`, `teal{DEFAULT,suave}`,
+`naranja{DEFAULT,suave}`, `blanco`, `texto{DEFAULT,suave}`, `borde`, `crema-hover` → habilitan
+`bg-naranja-suave`, `border-borde`, `text-texto-suave`, etc. **Tipografía:** se MANTIENEN las familias
+(Inter sans + Lora serif — ya profesionales/legibles para la voz clínica adulta; el skill ui-ux-pro-max
+solo sugería pares "playful/kids", descartados); se AÑADE `theme.extend.fontSize` con las escalas de §1:
+`display` (36px/700), `heading` (24px/600), `eyebrow` (11px/600 +tracking uppercase), `body` (15px),
+`caption` (13px). `extend.fontSize` se MERGEA con los defaults de Tailwind (text-sm/base/lg… siguen
+válidos). **Skill ui-ux-pro-max (color):** validó la dirección — el arquetipo "Online Course/E-learning"
+es exactamente teal=progreso + naranja=logro; guardrail WCAG anotado (el naranja va como fondo/acento
+con texto oscuro o blanco, nunca como texto pequeño sobre blanco — los tokens naranja vs naranja-suave
+ya lo reflejan). **NO se tocó `body`** (decisión: el fondo crema global de §1 se resuelve en Bloque 3
+sidebar/shell y Bloque 4 home; este bloque solo deja el token disponible). **Verificación:**
+`npm run type-check -w @amatla/web` en verde (cambios aditivos → clases `brand-*` existentes intactas).
+Sin tests nuevos (solo tokens). 237 tests siguen en verde. Pendiente bloques siguientes: §3.1–§3.4
+(navegación: home con "Descubrir", Explorar en shell, quitar "Mis cursos", stubs "Próximamente").
 
 ### ADR — 2026-06-14 (sesión 10, rediseño) — Bloque 1: FIX §15 sección/lección sin reload
 **Bug:** al crear una sección, el estado optimista de `components/instructor/estructura-secciones.tsx`

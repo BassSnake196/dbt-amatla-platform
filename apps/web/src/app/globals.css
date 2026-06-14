@@ -12,6 +12,18 @@
   --color-neutral-100: #f2f0ec;
   --color-neutral-900: #1c1c1a;
   --color-danger: #c0392b; /* alertas de crisis — usar con cuidado */
+  --color-teal-suave: #e8f4f0;
+  --color-naranja-suave: #fef3dc;
+  --color-blanco: #ffffff;
+  --color-texto: #1a1a1a;
+  --color-texto-suave: #6b6b6b;
+  --color-borde: #e5e0d8;
+  --color-crema-hover: #f2e4c4;
+  /* alias semánticos §1 → tokens de marca ya existentes (misma fuente de verdad) */
+  --color-fondo: var(--color-brand-surface);
+  --color-sidebar: var(--color-brand-dark);
+  --color-teal: var(--color-brand-secondary);
+  --color-naranja: var(--color-brand-primary);
 }
 
 body {
