@@ -134,7 +134,7 @@ export function GestionUsuarios({ usuarios: usuariosIniciales, usuarioActualId }
                 {filtrados.map((u) => {
                   const esPropio = u.id === usuarioActualId
                   return (
-                    <tr key={u.id}>
+                    <tr key={u.id} className="transition-colors hover:bg-crema-hover">
                       <td className="px-5 py-3">
                         <p className="font-semibold text-brand-dark">
                           {u.nombre}
