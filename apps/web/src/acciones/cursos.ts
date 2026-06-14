@@ -56,6 +56,21 @@ export async function publicarCursoAction(cursoId: string): Promise<{ error: str
   return { error: null }
 }
 
+export async function cambiarVisibilidadAction(
+  cursoId: string,
+  esPublico: boolean,
+): Promise<{ error: string | null }> {
+  const api = await apiServer()
+  try {
+    await api.cursos.cambiarVisibilidad({ id: cursoId, esPublico })
+  } catch (error) {
+    return { error: mensajeLegible(error) }
+  }
+  revalidatePath('/instructor')
+  revalidatePath(`/instructor/cursos/${cursoId}`)
+  return { error: null }
+}
+
 export async function archivarCursoAction(cursoId: string): Promise<{ error: string | null }> {
   const api = await apiServer()
   try {

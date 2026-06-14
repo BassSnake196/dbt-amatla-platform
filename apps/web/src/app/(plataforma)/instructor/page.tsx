@@ -106,6 +106,15 @@ export default async function InstructorPage() {
                       >
                         {status.texto}
                       </span>
+                      <span
+                        className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                          curso.esPublico
+                            ? 'bg-brand-secondary/10 text-brand-secondary'
+                            : 'bg-neutral-100 text-neutral-900/60'
+                        }`}
+                      >
+                        {curso.esPublico ? 'Público' : 'Privado'}
+                      </span>
                     </div>
                     <p className="mt-1 text-xs text-neutral-900/50">
                       {curso.categoria} · Actualizado el {formatoFecha.format(curso.actualizadoEl)}

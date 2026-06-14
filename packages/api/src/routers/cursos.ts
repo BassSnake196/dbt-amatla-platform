@@ -18,6 +18,8 @@ const cursoResumen = z.object({
   lecciones: z.number().int(),
   duracionSegundos: z.number().int(),
   actualizadoEl: z.date(),
+  // visible en el catálogo público "General" (solo cuenta si status = PUBLISHED)
+  esPublico: z.boolean(),
 })
 
 const cursoEditable = z.object({
@@ -28,6 +30,8 @@ const cursoEditable = z.object({
   status: z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']),
   // URL firmada on-demand (regla #10: nunca se guarda la URL, solo la key)
   thumbnailUrl: z.string().nullable(),
+  // visible en el catálogo público "General" (solo cuenta si status = PUBLISHED)
+  esPublico: z.boolean(),
 })
 
 // Validaciones de entrada — mensajes en español para mostrarse en el formulario
@@ -88,6 +92,7 @@ export const cursosRouter = router({
       lecciones: curso.sections.reduce((total, seccion) => total + seccion._count.lessons, 0),
       duracionSegundos: curso.totalDuration,
       actualizadoEl: curso.updatedAt,
+      esPublico: curso.isPublic,
     }))
   }),
 
@@ -104,6 +109,7 @@ export const cursosRouter = router({
         categoria: curso.category,
         status: curso.status,
         thumbnailUrl: curso.thumbnail ? obtenerAlmacen().urlLectura(curso.thumbnail).url : null,
+        esPublico: curso.isPublic,
       }
     }),
 
@@ -221,6 +227,31 @@ export const cursosRouter = router({
           'UPDATE_COURSE',
           auditResource('Course', input.id),
           { campos: Object.keys(input).filter((k) => k !== 'id') },
+          tx,
+        )
+      })
+      return { id: input.id }
+    }),
+
+  /**
+   * Mostrar/ocultar un curso propio en el catálogo público "General"
+   * (isPublic). Solo cuenta cuando el curso está PUBLISHED.
+   */
+  cambiarVisibilidad: instructorProcedure
+    .input(z.object({ id: z.string(), esPublico: z.boolean() }))
+    .output(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await cursoPropio(ctx, input.id)
+      await ctx.prisma.$transaction(async (tx) => {
+        await tx.course.update({
+          where: { id: input.id },
+          data: { isPublic: input.esPublico },
+        })
+        await auditFromRequest(
+          ctx,
+          'UPDATE_COURSE',
+          auditResource('Course', input.id),
+          { isPublic: input.esPublico },
           tx,
         )
       })

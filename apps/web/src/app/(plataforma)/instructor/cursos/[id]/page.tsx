@@ -68,7 +68,7 @@ export default async function EstructuraCursoPage({
             <Pencil size={13} aria-hidden="true" />
             Editar datos
           </Link>
-          <AccionesCurso cursoId={curso.id} status={curso.status} />
+          <AccionesCurso cursoId={curso.id} status={curso.status} esPublico={curso.esPublico} />
         </div>
       </div>
 

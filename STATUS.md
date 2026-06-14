@@ -1,5 +1,5 @@
 # 📌 Estado del Proyecto: Plataforma E-Learning
-- **Última actualización:** 2026-06-13 (sesión 8) — Fase 4: 4.9 (vista de progreso del estudiante para el instructor) COMPLETA. **Fase 4 (features del MVP) CERRADA: 4.1–4.9 ✅.** 229 tests. Modo orquestador (ejecutores Sonnet; orquestador revisó/verificó/commiteó).
+- **Última actualización:** 2026-06-14 (sesión 9) — Nueva feature: **catálogo público "General" + visibilidad de curso (público/privado)**. Migración `add_course_public`. 237 tests. Modo orquestador (ejecutores Sonnet; orquestador revisó/verificó/commiteó). Antes: Fase 4 (4.1–4.9) cerrada.
 - **Fase Actual:** Fase 4 ✅ (features del MVP completas). **Pendiente para usar el MVP de punta a punta en local: AUTH REAL (Google login / Magic Link) — hoy solo se entra con `/api/dev-login`.** Ver "Pendientes del prompt maestro" más abajo. Siguiente: cerrar auth real → Fase 5 (calidad/CI).
 - **Objetivo del Sprint:** Cerrar el MVP: asignación, progreso secuencial, quiz, editor TEXT, panel admin, progreso por estudiante (certificado/email/granular/móvil DIFERIDOS)
 
@@ -71,6 +71,28 @@
 - [x] Preview de lección + publicar/archivar con validación
 
 ## 🧠 Memoria de Decisiones (ADRs)
+
+### ADR — 2026-06-14 — Catálogo público "General" + visibilidad de curso (modo orquestador)
+**Decisión de producto:** los cursos tienen un eje de visibilidad independiente del status:
+`Course.isPublic` (migración `add_course_public`; default false). **Privado** (default) = solo
+inscritos via Enrollment (comportamiento histórico, "ocultos"). **Público** = aparece en el
+catálogo "General" para cualquier visitante; solo cuenta si `status = PUBLISHED`. Un usuario
+logueado que abre un curso público se **auto-inscribe** (reusa Enrollment + progreso); lo privado
+sigue requiriendo asignación del instructor.
+**Backend** — router `catalogo`: `publicos` (**publicProcedure**, SIN login → cards de cursos
+PUBLISHED+isPublic) e `inscribirme` (protectedProcedure, autoinscripción idempotente, NOT_FOUND si
+el curso no es público/publicado, audita ASSIGN_COURSE { autoinscripcion:true }). `cursos`: `esPublico`
+en `obtener`/`misCursos` + `cambiarVisibilidad` (instructor, ownership, audita UPDATE_COURSE). 8 tests.
+**Frontend** — página pública `/general` (TOP-LEVEL, fuera de `(plataforma)`, SIN gate) con cabecera
+propia (logo + "Continuar con Google" si anónimo / "Ir a mi plataforma" si logueado) y grid de cards
+(`components/publico/catalogo-publico.tsx`): clic anónimo → `alert` "inicia sesión" + push a
+`/iniciar-sesion`; clic logueado → `inscribirme` + navega al curso. El gate de `(plataforma)` ahora
+redirige a los anónimos a `/general` (antes a `/iniciar-sesion`). Toggle "Hacer público/privado" en
+`AccionesCurso` (instructor) + badge Público/Privado en "Mis cursos" + enlace "Explorar" en el sidebar.
+**Verificación:** 136 tests API + type-check web + `next build` OK (la ruta `/general` compila como
+dinámica). **237 tests** en total. **OJO:** el botón "Continuar con Google" aún no funciona hasta
+configurar credenciales OAuth (ver PENDIENTES.md / guía); para probar el lado logueado en local usa
+`/api/dev-login`.
 
 ### ADR — 2026-06-13 — Vista de progreso del estudiante para el instructor (Fase 4, tarea 4.9)
 Cierra las features del MVP. **Backend** — router `progreso` (`packages/api/src/routers/progreso.ts`,

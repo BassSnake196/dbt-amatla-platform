@@ -13,6 +13,7 @@ import { inscripcionesRouter } from './routers/inscripciones.js'
 import { quizRouter } from './routers/quiz.js'
 import { adminRouter } from './routers/admin.js'
 import { progresoRouter } from './routers/progreso.js'
+import { catalogoRouter } from './routers/catalogo.js'
 
 export const appRouter = router({
   health: healthRouter,
@@ -27,6 +28,7 @@ export const appRouter = router({
   quiz: quizRouter,
   admin: adminRouter,
   progreso: progresoRouter,
+  catalogo: catalogoRouter,
 })
 
 /** Tipo del router — lo consume el cliente tRPC en apps/web para type-safety extremo a extremo. */

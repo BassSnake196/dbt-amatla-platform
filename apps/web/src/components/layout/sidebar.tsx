@@ -6,6 +6,7 @@ import {
   BookOpen,
   Calendar,
   Bell,
+  Compass,
   Home,
   LayoutDashboard,
   LogOut,
@@ -17,6 +18,7 @@ import { cerrarSesion } from '@/acciones/auth'
 
 const NAV_ITEMS = [
   { href: '/', label: 'Inicio', icon: Home },
+  { href: '/general', label: 'Explorar', icon: Compass },
   { href: '/cursos', label: 'Mis cursos', icon: BookOpen },
   { href: '/calendario', label: 'Calendario', icon: Calendar },
   { href: '/notificaciones', label: 'Notificaciones', icon: Bell },

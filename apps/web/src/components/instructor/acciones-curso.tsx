@@ -5,15 +5,22 @@
 // muestra el error que devuelva.
 
 import { useState, useTransition } from 'react'
-import { Archive, Loader2, Megaphone } from 'lucide-react'
-import { archivarCursoAction, publicarCursoAction } from '@/acciones/cursos'
+import { useRouter } from 'next/navigation'
+import { Archive, Globe, Loader2, Lock, Megaphone } from 'lucide-react'
+import {
+  archivarCursoAction,
+  cambiarVisibilidadAction,
+  publicarCursoAction,
+} from '@/acciones/cursos'
 
 interface AccionesCursoProps {
   cursoId: string
   status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED'
+  esPublico: boolean
 }
 
-export function AccionesCurso({ cursoId, status }: AccionesCursoProps) {
+export function AccionesCurso({ cursoId, status, esPublico }: AccionesCursoProps) {
+  const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [ocupado, startTransition] = useTransition()
 
@@ -36,6 +43,23 @@ export function AccionesCurso({ cursoId, status }: AccionesCursoProps) {
     startTransition(async () => {
       const r = await archivarCursoAction(cursoId)
       if (r.error) setError(r.error)
+    })
+  }
+
+  function cambiarVisibilidad() {
+    if (
+      !window.confirm(
+        esPublico
+          ? '¿Quitar este curso del catálogo público?'
+          : '¿Publicar este curso en el catálogo General (visible para cualquiera)?',
+      )
+    )
+      return
+    setError(null)
+    startTransition(async () => {
+      const r = await cambiarVisibilidadAction(cursoId, !esPublico)
+      if (r.error) setError(r.error)
+      else router.refresh()
     })
   }
 
@@ -72,6 +96,21 @@ export function AccionesCurso({ cursoId, status }: AccionesCursoProps) {
             Archivar curso
           </button>
         )}
+        <button
+          type="button"
+          disabled={ocupado}
+          onClick={cambiarVisibilidad}
+          className="inline-flex items-center gap-1.5 rounded-full border border-neutral-100 px-4 py-2 text-xs font-semibold text-brand-dark transition-colors hover:border-brand-secondary hover:text-brand-secondary disabled:opacity-50"
+        >
+          {ocupado ? (
+            <Loader2 size={13} className="animate-spin" aria-hidden="true" />
+          ) : esPublico ? (
+            <Lock size={13} aria-hidden="true" />
+          ) : (
+            <Globe size={13} aria-hidden="true" />
+          )}
+          {esPublico ? 'Hacer privado' : 'Hacer público'}
+        </button>
       </div>
       {error && (
         <p role="alert" className="max-w-xs text-right text-xs font-medium text-danger">

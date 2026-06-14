@@ -123,6 +123,10 @@ model Course {
   description   String       @db.Text
   thumbnail     String? // key en R2 — la URL firmada se genera on-demand
   status        CourseStatus @default(DRAFT)
+  // Visibilidad en el catálogo "General": true = público (cualquiera logueado
+  // puede verlo/auto-inscribirse); false (default) = privado (solo asignados via
+  // Enrollment, el comportamiento histórico). Solo cuenta si status = PUBLISHED.
+  isPublic      Boolean      @default(false)
   instructorId  String
   category      String
   totalDuration Int          @default(0) // segundos
@@ -136,6 +140,8 @@ model Course {
 
   @@index([instructorId])
   @@index([status])
+  // Catálogo público "General": consulta status = PUBLISHED AND isPublic = true
+  @@index([status, isPublic])
 }
 
 model Section {
