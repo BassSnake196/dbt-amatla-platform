@@ -44,3 +44,7 @@ coverage/
 *.p12
 *.key
 *.mobileprovision
+
+# Cache de Python (skills)
+__pycache__/
+*.pyc
