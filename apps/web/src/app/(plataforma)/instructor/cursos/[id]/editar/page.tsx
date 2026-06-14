@@ -4,6 +4,7 @@ import { apiServer } from '@/lib/api-server'
 import { actualizarCursoAction } from '@/acciones/cursos'
 import { CursoForm } from '@/components/instructor/curso-form'
 import { SubirArchivo } from '@/components/instructor/subir-archivo'
+import { EditorPresentacion } from '@/components/instructor/editor-presentacion'
 
 export const metadata = { title: 'Editar curso — DBT.Amatla' }
 
@@ -63,6 +64,18 @@ export default async function EditarCursoPage({ params }: { params: Promise<{ id
           esPublico: curso.esPublico,
         }}
       />
+
+      <section className="space-y-3 rounded-card bg-white p-5 shadow-card">
+        <div>
+          <h3 className="text-sm font-semibold text-brand-dark">Presentación del curso</h3>
+          <p className="mt-1 max-w-2xl text-xs text-neutral-900/60">
+            Es lo que el estudiante ve en "Sobre este curso". Combina texto con formato, imágenes y
+            videos de YouTube o Vimeo para presentarlo de forma clara y atractiva. La descripción de
+            arriba se usa como resumen corto en las tarjetas.
+          </p>
+        </div>
+        <EditorPresentacion cursoId={curso.id} presentacionInicial={curso.presentacion ?? ''} />
+      </section>
     </div>
   )
 }

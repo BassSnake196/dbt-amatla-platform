@@ -21,9 +21,17 @@ export default async function CursoPage({ params }: { params: Promise<{ id: stri
     <div className="space-y-6">
       <section className="rounded-card bg-white p-6 shadow-card md:p-8">
         <h3 className="font-serif text-lg font-semibold text-brand-dark">Sobre este curso</h3>
-        <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-neutral-900/75">
-          {curso.descripcion}
-        </p>
+        {curso.presentacion ? (
+          <div
+            className="contenido-rico mt-3 text-sm leading-relaxed text-neutral-900/75"
+            // El HTML viene sanitizado en BD y con las imágenes ya re-firmadas
+            dangerouslySetInnerHTML={{ __html: curso.presentacion }}
+          />
+        ) : (
+          <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-neutral-900/75">
+            {curso.descripcion}
+          </p>
+        )}
 
         <div className="mt-6">
           {completado ? (

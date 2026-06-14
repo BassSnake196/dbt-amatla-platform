@@ -6,6 +6,8 @@ import { Prisma } from '@amatla/db'
 import { router, instructorProcedure } from '../trpc.js'
 import { auditFromRequest, auditResource } from '../audit.js'
 import { obtenerAlmacen } from '../almacen.js'
+import { sanitizarPresentacion } from '../sanitize.js'
+import { resolverImagenesContenido } from '../contenido.js'
 import type { Context, SessionUser } from '../context.js'
 
 const cursoResumen = z.object({
@@ -26,6 +28,8 @@ const cursoEditable = z.object({
   id: z.string(),
   titulo: z.string(),
   descripcion: z.string(),
+  // HTML enriquecido con imágenes ya resueltas (src re-firmado). null si vacío.
+  presentacion: z.string().nullable(),
   categoria: z.string(),
   status: z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']),
   // URL firmada on-demand (regla #10: nunca se guarda la URL, solo la key)
@@ -106,6 +110,7 @@ export const cursosRouter = router({
         id: curso.id,
         titulo: curso.title,
         descripcion: curso.description,
+        presentacion: curso.presentacion ? resolverImagenesContenido(curso.presentacion) : null,
         categoria: curso.category,
         status: curso.status,
         thumbnailUrl: curso.thumbnail ? obtenerAlmacen().urlLectura(curso.thumbnail).url : null,
@@ -227,6 +232,35 @@ export const cursosRouter = router({
           'UPDATE_COURSE',
           auditResource('Course', input.id),
           { campos: Object.keys(input).filter((k) => k !== 'id') },
+          tx,
+        )
+      })
+      return { id: input.id }
+    }),
+
+  /**
+   * Guardar la presentación enriquecida del curso. El HTML se sanitiza
+   * server-side (regla #13) ANTES de persistir — imágenes con data-key y
+   * video embebido solo de hosts permitidos.
+   */
+  actualizarPresentacion: instructorProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        presentacionHtml: z.string().max(200_000, 'La presentación es demasiado larga'),
+      }),
+    )
+    .output(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await cursoPropio(ctx, input.id)
+      const limpio = sanitizarPresentacion(input.presentacionHtml)
+      await ctx.prisma.$transaction(async (tx) => {
+        await tx.course.update({ where: { id: input.id }, data: { presentacion: limpio } })
+        await auditFromRequest(
+          ctx,
+          'UPDATE_COURSE',
+          auditResource('Course', input.id),
+          { campo: 'presentacion' },
           tx,
         )
       })

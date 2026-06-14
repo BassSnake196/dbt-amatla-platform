@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { BookOpen, Clock3, Layers, Pencil, Plus, Users } from 'lucide-react'
+import { BookOpen, Clock3, Layers, ListTree, Pencil, Plus, Users } from 'lucide-react'
 import { exigirInstructor } from '@/lib/guardia'
 import { apiServer } from '@/lib/api-server'
 
@@ -170,13 +170,22 @@ export default async function InstructorPage() {
                       </span>
                     </div>
 
-                    <Link
-                      href={`/instructor/cursos/${curso.id}/editar`}
-                      className="mt-3 inline-flex w-fit items-center gap-1.5 rounded-full border border-borde px-3 py-1.5 text-xs font-semibold text-texto transition-colors hover:bg-crema-hover"
-                    >
-                      <Pencil size={13} aria-hidden="true" />
-                      Editar
-                    </Link>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <Link
+                        href={`/instructor/cursos/${curso.id}`}
+                        className="inline-flex items-center gap-1.5 rounded-full bg-naranja px-3.5 py-1.5 text-xs font-semibold text-white transition-opacity hover:opacity-90"
+                      >
+                        <ListTree size={13} aria-hidden="true" />
+                        Gestionar contenido
+                      </Link>
+                      <Link
+                        href={`/instructor/cursos/${curso.id}/editar`}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-borde px-3 py-1.5 text-xs font-semibold text-texto transition-colors hover:bg-crema-hover"
+                      >
+                        <Pencil size={13} aria-hidden="true" />
+                        Editar datos
+                      </Link>
+                    </div>
                   </div>
                 </article>
               )

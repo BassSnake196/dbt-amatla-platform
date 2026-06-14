@@ -93,6 +93,21 @@ export async function archivarCursoAction(cursoId: string): Promise<{ error: str
   return { error: null }
 }
 
+export async function actualizarPresentacionAction(
+  cursoId: string,
+  presentacionHtml: string,
+): Promise<{ error: string | null }> {
+  const api = await apiServer()
+  try {
+    await api.cursos.actualizarPresentacion({ id: cursoId, presentacionHtml })
+  } catch (error) {
+    return { error: mensajeLegible(error) }
+  }
+  revalidatePath(`/instructor/cursos/${cursoId}/editar`)
+  revalidatePath(`/cursos/${cursoId}`)
+  return { error: null }
+}
+
 export async function actualizarCursoAction(
   cursoId: string,
   _estadoPrevio: EstadoFormCurso,

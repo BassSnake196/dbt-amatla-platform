@@ -42,8 +42,8 @@ export default async function EstructuraCursoPage({
             {curso.titulo}
           </h2>
           <p className="mt-1 text-sm text-neutral-900/60">
-            Arrastra las secciones para reordenarlas. Las lecciones se gestionan dentro de cada
-            sección.
+            Aquí construyes el contenido: agrega secciones, y dentro de cada una, lecciones de video,
+            PDF, texto o quiz. Arrastra las secciones para reordenarlas.
           </p>
         </div>
         <div className="flex items-start gap-2">
@@ -71,6 +71,8 @@ export default async function EstructuraCursoPage({
           <AccionesCurso cursoId={curso.id} status={curso.status} esPublico={curso.esPublico} />
         </div>
       </div>
+
+      <h3 className="font-serif text-lg font-semibold text-brand-dark">Contenido del curso</h3>
 
       <EstructuraSecciones
         cursoId={curso.id}

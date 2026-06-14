@@ -61,29 +61,33 @@ export default async function HomePage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-10">
-      {cursos.length > 0 ? (
-        <>
+      <section id="progreso" className="scroll-mt-24">
+        {cursos.length > 0 ? (
           <HeroBienvenida
             nombre={nombre}
             progresoGlobal={progresoGlobal}
             enCurso={enCurso}
             vitrina={vitrina}
           />
-          <Catalogo cursos={cursos} />
-        </>
-      ) : (
-        <section className="rounded-card border border-borde bg-white p-6 md:p-10">
-          <p className="text-eyebrow uppercase tracking-wider text-teal">Te damos la bienvenida</p>
-          <h1 className="mt-2 text-display text-texto">Hola, {nombre}</h1>
-          <p className="mt-3 text-body text-texto-suave">
-            Explora los cursos abiertos y empieza tu entrenamiento cuando quieras.
-          </p>
-        </section>
-      )}
+        ) : (
+          <div className="rounded-card border border-borde bg-white p-6 md:p-10">
+            <p className="text-eyebrow uppercase tracking-wider text-teal">Te damos la bienvenida</p>
+            <h1 className="mt-2 text-display text-texto">Hola, {nombre}</h1>
+            <p className="mt-3 text-body text-texto-suave">
+              Explora los cursos abiertos y empieza tu entrenamiento cuando quieras.
+            </p>
+          </div>
+        )}
+      </section>
 
-      <Descubrir cursos={descubrir} />
+      <div id="cursos" className="scroll-mt-24 space-y-10">
+        {cursos.length > 0 && <Catalogo cursos={cursos} />}
+        <Descubrir cursos={descubrir} />
+      </div>
 
-      <SesionesVivo sesiones={sesiones} />
+      <section id="sesiones" className="scroll-mt-24">
+        <SesionesVivo sesiones={sesiones} />
+      </section>
     </div>
   )
 }

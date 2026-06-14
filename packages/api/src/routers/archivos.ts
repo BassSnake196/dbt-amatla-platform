@@ -32,6 +32,13 @@ export const REGLAS_SUBIDA = {
     mimes: ['application/pdf'] as readonly string[],
     maxBytes: 50 * 1024 * 1024, // 50MB documentos
   },
+  // Imágenes embebidas en el HTML enriquecido (lecciones TEXT y presentación
+  // del curso). Se referencian por `data-key`, no enlazan ninguna columna.
+  IMAGEN_CONTENIDO: {
+    extensiones: ['jpg', 'jpeg', 'png', 'webp'] as readonly string[],
+    mimes: ['image/jpeg', 'image/png', 'image/webp'] as readonly string[],
+    maxBytes: 5 * 1024 * 1024, // 5MB imágenes embebidas
+  },
 } as const
 
 export type PropositoSubida = keyof typeof REGLAS_SUBIDA
@@ -41,12 +48,16 @@ const MIME_POR_EXTENSION: Record<string, string> = {
   jpg: 'image/jpeg',
   jpeg: 'image/jpeg',
   png: 'image/png',
+  webp: 'image/webp',
   pdf: 'application/pdf',
 }
 
 const solicitudSubida = z.object({
-  proposito: z.enum(['THUMBNAIL_CURSO', 'PDF_LECCION']),
-  /** Course.id para THUMBNAIL_CURSO, Lesson.id para PDF_LECCION. */
+  proposito: z.enum(['THUMBNAIL_CURSO', 'PDF_LECCION', 'IMAGEN_CONTENIDO']),
+  /**
+   * Course.id para THUMBNAIL_CURSO e IMAGEN_CONTENIDO, Lesson.id para
+   * PDF_LECCION.
+   */
   objetivoId: z.string().min(1),
   nombreArchivo: z.string().trim().min(1).max(255),
   mimeType: z.string().min(1).max(100),
@@ -100,6 +111,9 @@ export const archivosRouter = router({
       if (input.proposito === 'THUMBNAIL_CURSO') {
         const curso = await cursoPropio(ctx, input.objetivoId)
         key = `cursos/${curso.id}/thumbnail/${randomUUID()}.${extension}`
+      } else if (input.proposito === 'IMAGEN_CONTENIDO') {
+        const curso = await cursoPropio(ctx, input.objetivoId)
+        key = `cursos/${curso.id}/contenido/${randomUUID()}.${extension}`
       } else {
         const leccion = await leccionPropia(ctx, input.objetivoId)
         if (leccion.type !== 'PDF') {
@@ -189,5 +203,28 @@ export const archivosRouter = router({
         estado: subida.scanStatus as 'PENDING' | 'CLEAN' | 'INFECTED' | 'ERROR',
         detalle: subida.scanResult,
       }
+    }),
+
+  /**
+   * URL de lectura firmada de una imagen de contenido ya escaneada (CLEAN).
+   * El editor la usa para insertar `<img src=... data-key=...>` tras la subida:
+   * `solicitarSubida` no devuelve el key y las imágenes de contenido no enlazan
+   * ninguna columna (se referencian por `data-key` en el HTML).
+   */
+  urlContenidoSubido: instructorProcedure
+    .input(z.object({ uploadId: z.string() }))
+    .output(z.object({ key: z.string(), url: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const subida = await ctx.prisma.fileUpload.findFirst({
+        where: { id: input.uploadId, uploadedBy: ctx.user.id },
+        select: { r2Key: true, purpose: true, scanStatus: true },
+      })
+      if (!subida || subida.purpose !== 'IMAGEN_CONTENIDO') {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Imagen no encontrada.' })
+      }
+      if (subida.scanStatus !== 'CLEAN') {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'La imagen aún no está disponible.' })
+      }
+      return { key: subida.r2Key, url: obtenerAlmacen().urlLectura(subida.r2Key).url }
     }),
 })

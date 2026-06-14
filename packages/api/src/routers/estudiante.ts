@@ -11,6 +11,7 @@ import { encrypt, decryptField } from '@amatla/crypto'
 import { router, protectedProcedure } from '../trpc.js'
 import { obtenerStream } from '../stream.js'
 import { obtenerAlmacen } from '../almacen.js'
+import { resolverImagenesContenido } from '../contenido.js'
 import type { Context, SessionUser } from '../context.js'
 
 const cursoAsignado = z.object({
@@ -63,6 +64,8 @@ const cursoVista = z.object({
   id: z.string(),
   titulo: z.string(),
   descripcion: z.string(),
+  // Presentación enriquecida (HTML sanitizado + imágenes resueltas) o null.
+  presentacion: z.string().nullable(),
   categoria: z.string(),
   instructora: z.string(),
   progreso: z.number().int().min(0).max(100),
@@ -395,6 +398,7 @@ export const estudianteRouter = router({
           id: true,
           title: true,
           description: true,
+          presentacion: true,
           category: true,
           instructor: { select: { name: true } },
           sections: {
@@ -478,6 +482,7 @@ export const estudianteRouter = router({
         id: curso.id,
         titulo: curso.title,
         descripcion: curso.description,
+        presentacion: curso.presentacion ? resolverImagenesContenido(curso.presentacion) : null,
         categoria: curso.category,
         instructora: curso.instructor.name ?? 'Equipo DBT.Amatla',
         progreso: totales === 0 ? 0 : Math.round((nCompletadas / totales) * 100),
@@ -540,8 +545,9 @@ export const estudianteRouter = router({
         ultimaPosicion: progreso?.lastPosition ?? 0,
         // si ya está completada, no se limita el avance (repaso libre)
         maxVisto: progreso?.completedAt ? (leccion.duration ?? Number.MAX_SAFE_INTEGER) : (progreso?.watchedSeconds ?? 0),
-        // El content ya está sanitizado en BD (se sanitiza al guardar)
-        contenido: leccion.type === 'TEXT' ? (leccion.content ?? '') : '',
+        // El content ya está sanitizado en BD (se sanitiza al guardar); las
+        // imágenes embebidas se re-firman al renderizar vía data-key.
+        contenido: leccion.type === 'TEXT' ? resolverImagenesContenido(leccion.content ?? '') : '',
         curso: { id: curso.id, titulo: curso.title },
         seccionTitulo: leccion.section.title,
       }

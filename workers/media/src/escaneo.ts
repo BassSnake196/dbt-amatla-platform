@@ -112,7 +112,7 @@ export async function procesarEscaneo(uploadId: string, deps: DepsEscaneo): Prom
   // CLEAN — enlazar el recurso. Si el curso/lección fue eliminado mientras
   // se escaneaba, el archivo queda huérfano: se rechaza en vez de enlazarse.
   const objetivoExiste =
-    upload.purpose === 'THUMBNAIL_CURSO' && upload.targetId
+    (upload.purpose === 'THUMBNAIL_CURSO' || upload.purpose === 'IMAGEN_CONTENIDO') && upload.targetId
       ? (await prisma.course.findUnique({ where: { id: upload.targetId }, select: { id: true } })) !== null
       : upload.purpose === 'PDF_LECCION' && upload.targetId
         ? (await prisma.lesson.findUnique({ where: { id: upload.targetId }, select: { id: true } })) !== null
@@ -139,11 +139,13 @@ export async function procesarEscaneo(uploadId: string, deps: DepsEscaneo): Prom
       const curso = await tx.course.findUniqueOrThrow({ where: { id: upload.targetId! } })
       keyAnterior = curso.thumbnail
       await tx.course.update({ where: { id: curso.id }, data: { thumbnail: upload.r2Key } })
-    } else {
+    } else if (upload.purpose === 'PDF_LECCION') {
       const leccion = await tx.lesson.findUniqueOrThrow({ where: { id: upload.targetId! } })
       keyAnterior = leccion.fileKey
       await tx.lesson.update({ where: { id: leccion.id }, data: { fileKey: upload.r2Key } })
     }
+    // IMAGEN_CONTENIDO no enlaza ninguna columna: la imagen se referencia por
+    // `data-key` en el HTML enriquecido. Basta con marcarla CLEAN (arriba).
   })
 
   await notificar(

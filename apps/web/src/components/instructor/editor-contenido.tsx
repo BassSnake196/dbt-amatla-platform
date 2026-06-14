@@ -6,7 +6,7 @@
 import { useEditor, EditorContent, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Link from '@tiptap/extension-link'
-import { useState, useTransition } from 'react'
+import { useRef, useState, useTransition } from 'react'
 import {
   Bold,
   Italic,
@@ -17,10 +17,13 @@ import {
   Quote,
   Link2,
   Link2Off,
+  ImagePlus,
   Loader2,
   Check,
 } from 'lucide-react'
 import { guardarContenidoLeccionAction } from '@/acciones/lecciones'
+import { subirImagenContenido } from '@/lib/subir-imagen-contenido'
+import { ImagenContenido } from './extensiones-editor'
 
 function BotonBarra({
   activo,
@@ -49,7 +52,15 @@ function BotonBarra({
   )
 }
 
-function BarraHerramientas({ editor }: { editor: Editor }) {
+function BarraHerramientas({
+  editor,
+  onImagen,
+  subiendoImagen,
+}: {
+  editor: Editor
+  onImagen: () => void
+  subiendoImagen: boolean
+}) {
   function alternarEnlace() {
     if (editor.isActive('link')) {
       editor.chain().focus().unsetLink().run()
@@ -88,6 +99,10 @@ function BarraHerramientas({ editor }: { editor: Editor }) {
       <BotonBarra etiqueta={editor.isActive('link') ? 'Quitar enlace' : 'Enlace'} activo={editor.isActive('link')} onClick={alternarEnlace}>
         {editor.isActive('link') ? <Link2Off size={15} /> : <Link2 size={15} />}
       </BotonBarra>
+      <span className="mx-1 h-5 w-px bg-neutral-100" />
+      <BotonBarra etiqueta="Insertar imagen" onClick={onImagen}>
+        {subiendoImagen ? <Loader2 size={15} className="animate-spin" /> : <ImagePlus size={15} />}
+      </BotonBarra>
     </div>
   )
 }
@@ -104,12 +119,15 @@ export function EditorContenido({
   const [pendiente, startTransition] = useTransition()
   const [guardado, setGuardado] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [subiendoImagen, setSubiendoImagen] = useState(false)
+  const inputImagen = useRef<HTMLInputElement>(null)
 
   const editor = useEditor({
     immediatelyRender: false, // evita el hydration mismatch en el SSR de Next
     extensions: [
       StarterKit,
       Link.configure({ openOnClick: false, HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' } }),
+      ImagenContenido,
     ],
     content: contenidoInicial || '<p></p>',
     editorProps: {
@@ -133,10 +151,39 @@ export function EditorContenido({
     })
   }
 
+  async function alElegirImagen(e: React.ChangeEvent<HTMLInputElement>) {
+    const archivo = e.target.files?.[0]
+    e.target.value = '' // permite re-subir el mismo archivo
+    if (!archivo || !editor) return
+    setError(null)
+    setSubiendoImagen(true)
+    const r = await subirImagenContenido(cursoId, archivo)
+    setSubiendoImagen(false)
+    if (r.error !== null) {
+      setError(r.error)
+      return
+    }
+    editor.chain().focus().setImage({ src: r.url, 'data-key': r.key } as { src: string }).run()
+    setGuardado(false)
+  }
+
   return (
     <div className="space-y-3">
+      <input
+        ref={inputImagen}
+        type="file"
+        accept=".jpg,.jpeg,.png,.webp"
+        onChange={alElegirImagen}
+        className="hidden"
+      />
       <div className="overflow-hidden rounded-card bg-white shadow-card">
-        {editor && <BarraHerramientas editor={editor} />}
+        {editor && (
+          <BarraHerramientas
+            editor={editor}
+            onImagen={() => inputImagen.current?.click()}
+            subiendoImagen={subiendoImagen}
+          />
+        )}
         <EditorContent editor={editor} />
       </div>
 

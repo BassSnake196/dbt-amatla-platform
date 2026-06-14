@@ -10,6 +10,7 @@ import { auditFromRequest, auditResource } from '../audit.js'
 import { obtenerAlmacen } from '../almacen.js'
 import { obtenerStream } from '../stream.js'
 import { sanitizarHtml } from '../sanitize.js'
+import { resolverImagenesContenido } from '../contenido.js'
 import { seccionPropia } from './secciones.js'
 import type { Context, SessionUser } from '../context.js'
 
@@ -155,7 +156,11 @@ export const leccionesRouter = router({
       if (leccion.type !== 'TEXT') {
         throw new TRPCError({ code: 'BAD_REQUEST', message: 'Esta lección no es de tipo texto.' })
       }
-      return { id: leccion.id, titulo: leccion.title, contenido: leccion.content ?? '' }
+      return {
+        id: leccion.id,
+        titulo: leccion.title,
+        contenido: resolverImagenesContenido(leccion.content ?? ''),
+      }
     }),
 
   /**

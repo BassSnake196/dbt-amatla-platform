@@ -6,7 +6,7 @@
 
 import { apiServer } from '@/lib/api-server'
 
-export type PropositoSubida = 'THUMBNAIL_CURSO' | 'PDF_LECCION'
+export type PropositoSubida = 'THUMBNAIL_CURSO' | 'PDF_LECCION' | 'IMAGEN_CONTENIDO'
 
 function mensajeLegible(error: unknown): string {
   const mensaje = error instanceof Error ? error.message : 'Algo salió mal. Intenta de nuevo.'
@@ -55,6 +55,22 @@ export async function estadoSubidaArchivoAction(
   try {
     const r = await api.archivos.estadoSubida({ uploadId })
     return { error: null, estado: r.estado, detalle: r.detalle }
+  } catch (error) {
+    return { error: mensajeLegible(error) }
+  }
+}
+
+/**
+ * Key + URL de lectura firmada de una imagen de contenido ya escaneada (CLEAN),
+ * para insertarla en el editor enriquecido (`<img src data-key>`).
+ */
+export async function urlContenidoSubidoAction(
+  uploadId: string,
+): Promise<{ error: string } | { error: null; key: string; url: string }> {
+  const api = await apiServer()
+  try {
+    const r = await api.archivos.urlContenidoSubido({ uploadId })
+    return { error: null, key: r.key, url: r.url }
   } catch (error) {
     return { error: mensajeLegible(error) }
   }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useRef, useState, useTransition } from 'react'
 import {
   DndContext,
   PointerSensor,
@@ -18,7 +18,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Check, ChevronDown, ChevronRight, GripVertical, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { Check, ChevronDown, ChevronRight, GripVertical, Layers, Pencil, Plus, Trash2, X } from 'lucide-react'
 import {
   crearSeccionAction,
   eliminarSeccionAction,
@@ -45,6 +45,7 @@ export function EstructuraSecciones({ cursoId, secciones: iniciales }: Estructur
   const [nuevoTitulo, setNuevoTitulo] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [pendiente, startTransition] = useTransition()
+  const inputNueva = useRef<HTMLInputElement>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -117,9 +118,26 @@ export function EstructuraSecciones({ cursoId, secciones: iniciales }: Estructur
       )}
 
       {secciones.length === 0 ? (
-        <p className="rounded-card bg-brand-surface p-6 text-sm text-brand-dark/70">
-          Aún no hay secciones. Agrega la primera para empezar a estructurar el curso.
-        </p>
+        <div className="flex flex-col items-center gap-3 rounded-card bg-brand-surface p-8 text-center">
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-brand-secondary shadow-card">
+            <Layers size={22} aria-hidden="true" />
+          </span>
+          <div>
+            <p className="text-sm font-semibold text-brand-dark">Empieza a estructurar tu curso</p>
+            <p className="mt-1 text-sm text-brand-dark/70">
+              Crea tu primera sección y luego agrega lecciones de video, PDF, texto o quiz dentro de
+              cada una.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => inputNueva.current?.focus()}
+            className="inline-flex items-center gap-1.5 rounded-full bg-brand-secondary px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+          >
+            <Plus size={15} aria-hidden="true" />
+            Agregar primera sección
+          </button>
+        </div>
       ) : (
         // id determinista: sin él, dnd-kit numera con un contador global y
         // el aria-describedby del SSR no coincide con el del cliente
@@ -149,6 +167,7 @@ export function EstructuraSecciones({ cursoId, secciones: iniciales }: Estructur
 
       <form onSubmit={agregarSeccion} className="flex gap-2">
         <input
+          ref={inputNueva}
           type="text"
           value={nuevoTitulo}
           onChange={(e) => setNuevoTitulo(e.target.value)}

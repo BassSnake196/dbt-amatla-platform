@@ -2,9 +2,11 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useState } from 'react'
 import {
   Bell,
   Calendar,
+  ChevronDown,
   Compass,
   Home,
   LayoutDashboard,
@@ -18,6 +20,13 @@ import { cerrarSesion } from '@/acciones/auth'
 const NAV_ITEMS = [
   { href: '/', label: 'Inicio', icon: Home },
   { href: '/explorar', label: 'Explorar', icon: Compass },
+]
+
+// Anclas a los bloques del Inicio (ver ids en la página `/`).
+const SUB_INICIO = [
+  { href: '/#progreso', label: 'Progreso' },
+  { href: '/#cursos', label: 'Cursos' },
+  { href: '/#sesiones', label: 'Sesiones en vivo' },
 ]
 
 // Entrada extra solo para instructores y administradores
@@ -110,6 +119,9 @@ export function Sidebar({ open, imagen, nombre, iniciales, rol, onClose }: Sideb
         <nav className="flex flex-1 flex-col gap-1 px-3 py-4" aria-label="Navegación principal">
           {items.map(({ href, label, icon: Icon }) => {
             const active = pathname === href
+            if (href === '/') {
+              return <ItemInicio key="/" active={active} claseItem={claseItem} onClose={onClose} />
+            }
             return (
               <Link
                 key={href}
@@ -157,5 +169,63 @@ export function Sidebar({ open, imagen, nombre, iniciales, rol, onClose }: Sideb
         </div>
       </aside>
     </>
+  )
+}
+
+// "Inicio" expandible: navega a `/` y despliega las anclas a los bloques del
+// home (Progreso / Cursos / Sesiones en vivo).
+function ItemInicio({
+  active,
+  claseItem,
+  onClose,
+}: {
+  active: boolean
+  claseItem: (active: boolean) => string
+  onClose: () => void
+}) {
+  const [abierto, setAbierto] = useState(active)
+
+  return (
+    <div>
+      <div className={`${claseItem(active)} !pr-1`}>
+        <Link
+          href="/"
+          onClick={onClose}
+          className="flex flex-1 items-center gap-3"
+          aria-current={active ? 'page' : undefined}
+        >
+          <Home size={18} aria-hidden="true" />
+          Inicio
+        </Link>
+        <button
+          type="button"
+          onClick={() => setAbierto((v) => !v)}
+          aria-expanded={abierto}
+          aria-label={abierto ? 'Contraer Inicio' : 'Expandir Inicio'}
+          className="rounded p-1 text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+        >
+          <ChevronDown
+            size={16}
+            aria-hidden="true"
+            className={`transition-transform ${abierto ? 'rotate-180' : ''}`}
+          />
+        </button>
+      </div>
+
+      {abierto && (
+        <div className="mt-1 flex flex-col gap-0.5 pl-9">
+          {SUB_INICIO.map(({ href, label }) => (
+            <Link
+              key={href}
+              href={href}
+              onClick={onClose}
+              className="rounded-lg px-3 py-2 text-sm font-medium text-white/65 transition-colors hover:bg-white/[0.07] hover:text-white"
+            >
+              {label}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }

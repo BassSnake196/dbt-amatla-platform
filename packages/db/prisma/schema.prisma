@@ -121,6 +121,10 @@ model Course {
   id            String       @id @default(cuid())
   title         String
   description   String       @db.Text
+  // Presentación enriquecida (HTML sanitizado) que ve el estudiante en "Sobre
+  // este curso". `description` se conserva como resumen corto (tarjetas/SEO).
+  // Las imágenes se guardan con data-key y el src se re-firma al renderizar.
+  presentacion  String?      @db.Text
   thumbnail     String? // key en R2 — la URL firmada se genera on-demand
   status        CourseStatus @default(DRAFT)
   // Visibilidad en el catálogo "General": true = público (cualquiera logueado
