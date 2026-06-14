@@ -8,6 +8,9 @@ import { apiServer } from '@/lib/api-server'
 
 export interface ResultadoSeccion {
   error: string | null
+  // id real de la sección recién creada — el estado optimista lo necesita para
+  // poder crear lecciones en ella sin recargar (antes usaba un id temporal).
+  id?: string
 }
 
 function mensajeLegible(error: unknown): string {
@@ -24,14 +27,16 @@ export async function crearSeccionAction(
   cursoId: string,
   titulo: string,
 ): Promise<ResultadoSeccion> {
+  let id: string
   try {
     const api = await apiServer()
-    await api.secciones.crear({ cursoId, titulo })
+    const seccion = await api.secciones.crear({ cursoId, titulo })
+    id = seccion.id
   } catch (error) {
     return { error: mensajeLegible(error) }
   }
   revalidatePath(`/instructor/cursos/${cursoId}`)
-  return { error: null }
+  return { error: null, id }
 }
 
 export async function renombrarSeccionAction(

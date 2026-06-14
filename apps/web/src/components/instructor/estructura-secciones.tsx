@@ -77,10 +77,11 @@ export function EstructuraSecciones({ cursoId, secciones: iniciales }: Estructur
       else {
         setError(null)
         setNuevoTitulo('')
-        // id temporal hasta que el servidor revalide la página
+        // id REAL de BD (no temporal): permite crear lecciones en la sección
+        // recién agregada sin recargar. Fallback a tmp por si la acción no lo trae.
         setSecciones((previas) => [
           ...previas,
-          { id: `tmp-${Date.now()}`, titulo, descripcion: null, lecciones: [] },
+          { id: r.id ?? `tmp-${Date.now()}`, titulo, descripcion: null, lecciones: [] },
         ])
       }
     })

@@ -1,5 +1,5 @@
 # 📌 Estado del Proyecto: Plataforma E-Learning
-- **Última actualización:** 2026-06-14 (sesión 9) — Nueva feature: **catálogo público "General" + visibilidad de curso (público/privado)**. Migración `add_course_public`. 237 tests. Modo orquestador (ejecutores Sonnet; orquestador revisó/verificó/commiteó). Antes: Fase 4 (4.1–4.9) cerrada.
+- **Última actualización:** 2026-06-14 (sesión 10 — REDISEÑO) — Arranque de la sesión de rediseño visual. **Bloque 1 cerrado: FIX §15 (crear sección/lección sin reload).** Decisiones de flujo tomadas con el usuario: Inicio = mis cursos + descubrir público (sin muro vacío); Explorar dentro del shell; quitar "Mis cursos" del sidebar; stubs "Próximamente" para Calendario/Notificaciones/Configuración. Antes (sesión 9): catálogo público "General" + visibilidad (público/privado), migración `add_course_public`, 237 tests.
 - **Fase Actual:** Fase 4 ✅ (features del MVP completas). **Pendiente para usar el MVP de punta a punta en local: AUTH REAL (Google login / Magic Link) — hoy solo se entra con `/api/dev-login`.** Ver "Pendientes del prompt maestro" más abajo. Siguiente: cerrar auth real → Fase 5 (calidad/CI).
 - **Objetivo del Sprint:** Cerrar el MVP: asignación, progreso secuencial, quiz, editor TEXT, panel admin, progreso por estudiante (certificado/email/granular/móvil DIFERIDOS)
 
@@ -71,6 +71,24 @@
 - [x] Preview de lección + publicar/archivar con validación
 
 ## 🧠 Memoria de Decisiones (ADRs)
+
+### ADR — 2026-06-14 (sesión 10, rediseño) — Bloque 1: FIX §15 sección/lección sin reload
+**Bug:** al crear una sección, el estado optimista de `components/instructor/estructura-secciones.tsx`
+usaba un id temporal (`tmp-${Date.now()}`). Crear una lección en esa sección recién creada fallaba
+("Sección no encontrada") hasta recargar, porque ese id no era el real de BD. **Diagnóstico:** el
+procedure `secciones.crear` YA devolvía `{ id }` (sin cambios de backend); el de lecciones
+(`crearLeccionAction` + `lecciones-seccion.tsx`) YA propagaba y usaba el id real → ese flujo ya
+estaba bien. El fallo era solo en el camino de secciones. **Fix (solo frontend, 2 archivos):**
+(1) `acciones/secciones.ts` — `crearSeccionAction` captura `seccion.id` y lo devuelve en
+`ResultadoSeccion` (`{ error, id? }`); (2) `estructura-secciones.tsx` — el optimista usa
+`r.id ?? tmp-...`. **Verificación:** `type-check -w @amatla/web` en verde + revisión de código
+(el patrón idéntico ya funciona desde antes en la creación de lecciones). No requirió tests nuevos
+ni tocar tRPC/schema. **Decidido en esta sesión (pendiente de implementar en bloques siguientes):**
+modelo de navegación — Inicio muestra cursos inscritos + sección "Descubrir" (catálogo público
+inline) para que el usuario nuevo nunca vea muro vacío; Explorar se renderiza dentro del shell (con
+sidebar) para logueados, `/general` queda standalone solo para anónimos; se elimina "Mis cursos"
+como ítem del sidebar; Calendario/Notificaciones/Configuración pasan a páginas stub "Próximamente"
+(sin lógica, sin 404). Favoritos NO se implementa (sin modelo en el schema).
 
 ### ADR — 2026-06-14 — Catálogo público "General" + visibilidad de curso (modo orquestador)
 **Decisión de producto:** los cursos tienen un eje de visibilidad independiente del status:
