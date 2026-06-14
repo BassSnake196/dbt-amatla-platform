@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation'
-import { Mail } from 'lucide-react'
 import { auth } from '@/auth'
-import { enviarEnlaceMagico, iniciarConGoogle } from '@/acciones/auth'
+import { iniciarConGoogle } from '@/acciones/auth'
 
 export const metadata = { title: 'Iniciar sesión — DBT.Amatla' }
 
@@ -46,40 +45,13 @@ export default async function IniciarSesionPage() {
             Hola de nuevo
           </h1>
           <p className="mt-2 text-sm text-neutral-900/60">
-            Escribe tu correo y te enviamos un enlace para entrar — sin contraseñas.
+            Entra con tu cuenta de Google para acceder a tu plataforma.
           </p>
 
-          <form action={enviarEnlaceMagico} className="mt-8 space-y-4">
-            <label className="block">
-              <span className="mb-1.5 block text-sm font-medium text-brand-dark">Correo</span>
-              <input
-                type="email"
-                name="email"
-                required
-                autoComplete="email"
-                placeholder="tu@correo.com"
-                className="w-full rounded-lg border border-neutral-100 bg-white px-4 py-3 text-sm shadow-card placeholder:text-neutral-900/40 focus:border-brand-secondary focus:outline-none focus:ring-2 focus:ring-brand-secondary/30"
-              />
-            </label>
+          <form action={iniciarConGoogle} className="mt-8">
             <button
               type="submit"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-primary px-4 py-3 text-sm font-semibold text-brand-dark transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
-            >
-              <Mail size={16} aria-hidden="true" />
-              Enviarme el enlace de acceso
-            </button>
-          </form>
-
-          <div className="my-6 flex items-center gap-3 text-xs text-neutral-900/40">
-            <span className="h-px flex-1 bg-neutral-100" />
-            o
-            <span className="h-px flex-1 bg-neutral-100" />
-          </div>
-
-          <form action={iniciarConGoogle}>
-            <button
-              type="submit"
-              className="inline-flex w-full items-center justify-center gap-3 rounded-lg border border-neutral-100 bg-white px-4 py-3 text-sm font-semibold text-brand-dark shadow-card transition-colors hover:bg-neutral-100"
+              className="inline-flex w-full items-center justify-center gap-3 rounded-lg bg-brand-primary px-4 py-3 text-sm font-semibold text-brand-dark transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
             >
               <GoogleIcon />
               Continuar con Google

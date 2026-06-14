@@ -6,7 +6,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { AlertCircle, Clock3, Loader2, PlayCircle } from 'lucide-react'
+import { AlertCircle, Clock3, Loader2, PlayCircle, Sparkles, X } from 'lucide-react'
 import { formatearDuracion } from '@/lib/formato'
 import { inscribirmeAction } from '@/acciones/catalogo'
 
@@ -60,11 +60,11 @@ export function CatalogoPublico({
   const [, iniciarTransicion] = useTransition()
   const [cargandoId, setCargandoId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [avisoLogin, setAvisoLogin] = useState(false)
 
   function abrirCurso(curso: CursoPublico) {
     if (!sesionActiva) {
-      window.alert('Inicia sesión con Google para ver este curso.')
-      router.push('/iniciar-sesion')
+      setAvisoLogin(true)
       return
     }
 
@@ -176,6 +176,47 @@ export function CatalogoPublico({
           )
         })}
       </div>
+
+      {avisoLogin && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-brand-dark/40 p-4"
+          onClick={() => setAvisoLogin(false)}
+        >
+          <div
+            className="relative w-full max-w-sm rounded-card border border-borde bg-white p-6 text-center md:p-8"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setAvisoLogin(false)}
+              aria-label="Cerrar"
+              className="absolute right-4 top-4 text-texto-suave transition-colors hover:text-texto"
+            >
+              <X size={20} aria-hidden="true" />
+            </button>
+
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-naranja-suave text-naranja">
+              <Sparkles size={22} aria-hidden="true" />
+            </div>
+
+            <h3 className="mt-4 text-heading text-texto">Crea tu cuenta para empezar</h3>
+            <p className="mt-2 text-body text-texto-suave">
+              Este curso es parte del espacio de habilidades DBT.Amatla. Inicia sesión para
+              guardarlo en tu plataforma y seguir tu progreso.
+            </p>
+
+            <button
+              type="button"
+              onClick={() => router.push('/iniciar-sesion')}
+              className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-naranja px-4 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+            >
+              Continuar con Google
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

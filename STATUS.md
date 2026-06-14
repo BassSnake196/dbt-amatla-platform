@@ -1,5 +1,5 @@
 # 📌 Estado del Proyecto: Plataforma E-Learning
-- **Última actualización:** 2026-06-14 (sesión 10 — REDISEÑO) — Arranque de la sesión de rediseño visual. **Bloque 3 cerrado: rediseño de sidebar + topbar + avatar real + 3 stubs "Próximamente" (redisenio §2,§3,§14).** Bloque 2: tokens del sistema de diseño (§1). Bloque 1: FIX §15 (crear sección/lección sin reload). Decisiones de flujo tomadas con el usuario: Inicio = mis cursos + descubrir público (sin muro vacío); Explorar dentro del shell; quitar "Mis cursos" del sidebar; stubs "Próximamente" para Calendario/Notificaciones/Configuración. Antes (sesión 9): catálogo público "General" + visibilidad (público/privado), migración `add_course_public`, 237 tests.
+- **Última actualización:** 2026-06-14 (sesión 10 — REDISEÑO) — Arranque de la sesión de rediseño visual. **Bloque 4 cerrado: home con hero de bienvenida (progreso global) + sección "Descubrir" inline + aviso de login amistoso + login solo-Google (redisenio §4,§13,§14 + decisión §3.1).** Bloque 3: sidebar + topbar + avatar real + 3 stubs. Bloque 2: tokens del sistema de diseño (§1). Bloque 1: FIX §15. Decisiones de flujo tomadas con el usuario: Inicio = mis cursos + descubrir público (sin muro vacío); Explorar dentro del shell; quitar "Mis cursos" del sidebar; stubs "Próximamente" para Calendario/Notificaciones/Configuración. Antes (sesión 9): catálogo público "General" + visibilidad (público/privado), migración `add_course_public`, 237 tests.
 - **Fase Actual:** Fase 4 ✅ (features del MVP completas). **Pendiente para usar el MVP de punta a punta en local: AUTH REAL (Google login / Magic Link) — hoy solo se entra con `/api/dev-login`.** Ver "Pendientes del prompt maestro" más abajo. Siguiente: cerrar auth real → Fase 5 (calidad/CI).
 - **Objetivo del Sprint:** Cerrar el MVP: asignación, progreso secuencial, quiz, editor TEXT, panel admin, progreso por estudiante (certificado/email/granular/móvil DIFERIDOS)
 
@@ -71,6 +71,37 @@
 - [x] Preview de lección + publicar/archivar con validación
 
 ## 🧠 Memoria de Decisiones (ADRs)
+
+### ADR — 2026-06-14 (sesión 10, rediseño) — Bloque 4: home (hero + Descubrir) + login solo-Google (redisenio §4,§13,§14 + decisión §3.1)
+**Alcance:** frontend (ejecutor Sonnet 4.6; orquestador planificó/revisó/verificó/commiteó). Sin cambios de
+schema ni routers → no se recompiló la API. **Home (`(plataforma)/page.tsx`):** trae en `Promise.all`
+`estudiante.dashboard()` + `catalogo.publicos()` (rendimiento). **Progreso global REAL (§14)** calculado en
+la página, ponderado por nº de lecciones (`Σ progreso·lecciones / Σ lecciones`) — sin tocar el router
+(dashboard no expone un % global directo). **Hero de bienvenida (§4 A1, nuevo `hero-bienvenida.tsx`):**
+card BLANCA, eyebrow teal "Bienvenido de nuevo", "Hola, {nombre}" (nombre en teal), línea con el % real,
+botón outline teal "Continuar: {curso} →" (solo si hay `enCurso`), y anillo SVG de progreso global (arco
+naranja, track `var(--color-borde)`, 120px) conservando la animación `anillo-respira`. Reemplaza el uso de
+`HeroContinuar`; **`hero-continuar.tsx` ELIMINADO** (grep confirmó que ya no se importaba). **Sección
+"Descubrir" inline (decisión §3.1, nuevo `descubrir.tsx`):** cabecera con icono Compass + reusa
+`CatalogoPublico` con `sesionActiva=true`; **dedupe** excluyendo los cursos ya inscritos (cruce de ids con
+`cursos`); si queda vacío no se renderiza. **Fix muro vacío (§3.1):** la home solo renderiza el `Catalogo`
+de asignados si hay inscripciones; sin inscripciones muestra un banner de bienvenida cálido (NUNCA el viejo
+"tu terapeuta te asignará"). `SesionesVivo`/`LineaAyuda` intactos. **Aviso de login amistoso (§13, a
+petición del usuario):** en `catalogo-publico.tsx` se sustituyó el `window.alert` del clic anónimo por un
+MODAL accesible (`role=dialog`, `aria-modal`, cierre por X/overlay) con copy de marca DBT.Amatla, icono
+`Sparkles` en `bg-naranja-suave`, y UN solo CTA "Continuar con Google" → `/iniciar-sesion`. (Este componente
+es compartido: en la home el usuario está logueado → el modal nunca aparece ahí; aplica a `/general`
+anónimo, adelantando trabajo del Bloque 5.) **Login solo-Google (a petición del usuario, `iniciar-sesion/
+page.tsx`):** se eliminó de la UI el formulario de magic link (input de correo + botón) y el separador "o";
+queda solo el botón "Continuar con Google" (ahora CTA primario) + subtítulo nuevo. El server action
+`enviarEnlaceMagico` (`acciones/auth.ts`) NO se tocó (sigue disponible, solo oculto de la UI); la página
+`enlace-enviado` queda huérfana pero inofensiva. **OJO:** Google OAuth aún requiere credenciales locales
+para funcionar (ver PENDIENTES.md); en local se prueba el lado logueado con `/api/dev-login`. **Verificación:**
+`type-check -w @amatla/web` en verde + smoke HTTP con dev server real: `/iniciar-sesion` muestra "Continuar
+con Google" y YA NO el botón/input de magic link (subtítulo nuevo presente); `/` (dev-login estudiante) →
+200 con "Progreso global" y "Descubrir", sin el muro vacío. 237 tests siguen en verde (sin tests nuevos:
+solo UI). Commit tipo `feat:` (añade la sección Descubrir y el progreso global real). (Entorno: un `next dev`
+viejo seguía en el 3000 dando 500; el server fresco corrió en 3001.)
 
 ### ADR — 2026-06-14 (sesión 10, rediseño) — Bloque 3: rediseño de sidebar + topbar + avatar real + stubs (redisenio §2,§3,§14)
 **Alcance:** SOLO frontend (ejecutor Sonnet 4.6; orquestador planificó/revisó/verificó/commiteó). Sin
