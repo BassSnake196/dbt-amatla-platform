@@ -48,6 +48,18 @@ body {
   animation: respirar 5s ease-in-out infinite;
 }
 
+/* Apertura del menú desplegable del usuario (header) — opacity + translateY. */
+@keyframes menu-aparece {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .anillo-respira {
     animation: none;
