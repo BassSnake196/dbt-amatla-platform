@@ -23,7 +23,7 @@ export default async function CursoLayout({
       <div>
         <Link
           href="/"
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-secondary transition-colors hover:text-brand-dark"
+          className="inline-flex items-center gap-1.5 text-[13px] font-medium text-brand-secondary transition-colors hover:text-brand-dark hover:underline"
         >
           <ArrowLeft size={14} aria-hidden="true" />
           Mis cursos
@@ -51,10 +51,12 @@ export default async function CursoLayout({
               aria-valuemin={0}
               aria-valuemax={100}
               aria-label="Progreso del curso"
-              className="mt-1.5 h-2 overflow-hidden rounded-full bg-neutral-100"
+              className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[#d9d3c9]"
             >
               <div
-                className="h-full rounded-full bg-brand-primary"
+                className={`h-full rounded-full transition-[width] duration-[400ms] ease-out ${
+                  curso.progreso === 100 ? 'bg-brand-secondary' : 'bg-brand-primary'
+                }`}
                 style={{ width: `${curso.progreso}%` }}
               />
             </div>

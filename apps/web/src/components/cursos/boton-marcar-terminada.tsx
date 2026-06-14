@@ -43,7 +43,7 @@ export function BotonMarcarTerminada({
       type="button"
       onClick={marcar}
       disabled={pendiente}
-      className="inline-flex items-center gap-2 rounded-full bg-brand-primary px-6 py-3 text-sm font-semibold text-brand-dark transition-opacity hover:opacity-90 disabled:opacity-50"
+      className="inline-flex items-center gap-2 rounded-full bg-brand-primary px-6 py-3 text-sm font-semibold text-brand-dark transition-all hover:-translate-y-px hover:bg-[#e09610] hover:shadow-md active:translate-y-0 active:scale-[0.98] disabled:opacity-50"
     >
       {pendiente ? (
         <Loader2 size={16} className="animate-spin" aria-hidden="true" />

@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { CheckCircle2, FileText, MonitorPlay, NotebookText } from 'lucide-react'
+import { CheckCircle2, Clock3, FileText, MonitorPlay, NotebookText } from 'lucide-react'
 import { apiServer } from '@/lib/api-server'
 import { formatearDuracion } from '@/lib/formato'
 import { ReproductorVideo } from '@/components/cursos/reproductor-video'
@@ -70,15 +70,17 @@ export default async function LeccionPage({
   return (
     <article className="space-y-4">
       <header>
-        <p className="text-xs font-semibold uppercase tracking-[0.15em] text-brand-secondary">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-brand-secondary">
           {leccion.seccionTitulo}
         </p>
-        <h3 className="mt-1 font-serif text-xl font-semibold text-brand-dark md:text-2xl">
+        <h3 className="mt-1 font-serif text-[22px] font-bold leading-tight text-texto">
           {leccion.titulo}
         </h3>
-        <div className="mt-1 flex items-center gap-3 text-xs text-neutral-900/55">
+        <div className="mt-1.5 flex items-center gap-3 text-[13px] text-texto-suave">
           {leccion.duracion !== null && leccion.duracion > 0 && (
-            <span>{formatearDuracion(leccion.duracion)}</span>
+            <span className="inline-flex items-center gap-1">
+              <Clock3 size={14} aria-hidden="true" /> {formatearDuracion(leccion.duracion)}
+            </span>
           )}
           {leccion.estado === 'COMPLETADA' && (
             <span className="inline-flex items-center gap-1 font-semibold text-brand-secondary">

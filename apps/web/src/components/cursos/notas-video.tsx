@@ -93,10 +93,10 @@ export function NotasVideo({
           Mis notas
         </h3>
         <span
-          className="inline-flex items-center gap-1 text-[11px] text-neutral-900/45"
+          className="inline-flex items-center gap-1 text-[11px] font-medium text-brand-secondary"
           title="Tus notas se guardan cifradas y solo tú las ves"
         >
-          <Lock size={11} aria-hidden="true" /> privadas y cifradas
+          <Lock size={13} aria-hidden="true" /> privadas y cifradas
         </span>
       </div>
 
@@ -126,7 +126,7 @@ export function NotasVideo({
           <button
             type="submit"
             disabled={borrador.trim() === '' || pendiente}
-            className="inline-flex items-center gap-1.5 rounded-full bg-brand-secondary px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-brand-secondary/90 disabled:opacity-40"
+            className="inline-flex items-center gap-1.5 rounded-full bg-brand-secondary px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-[#245e52] disabled:opacity-40"
           >
             {pendiente ? (
               <Loader2 size={13} className="animate-spin" aria-hidden="true" />
