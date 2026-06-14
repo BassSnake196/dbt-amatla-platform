@@ -1,8 +1,8 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useState } from 'react'
 import { useFormStatus } from 'react-dom'
-import { AlertCircle } from 'lucide-react'
+import { AlertCircle, Globe, Lock } from 'lucide-react'
 import type { EstadoFormCurso } from '@/acciones/cursos'
 
 // Categorías sugeridas — el campo acepta texto libre (datalist)
@@ -17,7 +17,7 @@ const CATEGORIAS_SUGERIDAS = [
 interface CursoFormProps {
   action: (estado: EstadoFormCurso, formData: FormData) => Promise<EstadoFormCurso>
   textoBoton: string
-  valoresIniciales?: { titulo: string; descripcion: string; categoria: string }
+  valoresIniciales?: { titulo: string; descripcion: string; categoria: string; esPublico?: boolean }
 }
 
 function BotonEnviar({ texto }: { texto: string }) {
@@ -35,6 +35,7 @@ function BotonEnviar({ texto }: { texto: string }) {
 
 export function CursoForm({ action, textoBoton, valoresIniciales }: CursoFormProps) {
   const [estado, formAction] = useActionState(action, { error: null })
+  const [esPublico, setEsPublico] = useState(valoresIniciales?.esPublico ?? false)
 
   return (
     <form action={formAction} className="max-w-2xl space-y-5">
@@ -90,6 +91,27 @@ export function CursoForm({ action, textoBoton, valoresIniciales }: CursoFormPro
         />
       </label>
 
+      <fieldset>
+        <legend className="mb-1.5 block text-sm font-medium text-brand-dark">Visibilidad</legend>
+        <input type="hidden" name="esPublico" value={esPublico ? 'true' : 'false'} />
+        <div className="grid max-w-md grid-cols-2 gap-3">
+          <OpcionVisibilidad
+            seleccionada={!esPublico}
+            onClick={() => setEsPublico(false)}
+            icono={<Lock size={16} aria-hidden="true" />}
+            titulo="Privado"
+            descripcion="Solo estudiantes asignados"
+          />
+          <OpcionVisibilidad
+            seleccionada={esPublico}
+            onClick={() => setEsPublico(true)}
+            icono={<Globe size={16} aria-hidden="true" />}
+            titulo="Público"
+            descripcion="Aparece en el catálogo"
+          />
+        </div>
+      </fieldset>
+
       <div className="flex items-center gap-4">
         <BotonEnviar texto={textoBoton} />
         <a href="/instructor" className="text-sm font-medium text-neutral-900/60 hover:text-brand-dark">
@@ -97,5 +119,38 @@ export function CursoForm({ action, textoBoton, valoresIniciales }: CursoFormPro
         </a>
       </div>
     </form>
+  )
+}
+
+function OpcionVisibilidad({
+  seleccionada,
+  onClick,
+  icono,
+  titulo,
+  descripcion,
+}: {
+  seleccionada: boolean
+  onClick: () => void
+  icono: React.ReactNode
+  titulo: string
+  descripcion: string
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={seleccionada}
+      className={`flex items-start gap-2.5 rounded-lg border-[1.5px] px-4 py-3 text-left transition-colors ${
+        seleccionada
+          ? 'border-brand-primary bg-naranja-suave text-[#b07d10]'
+          : 'border-borde bg-white text-texto-suave hover:bg-crema-hover'
+      }`}
+    >
+      <span className="mt-0.5 shrink-0">{icono}</span>
+      <span>
+        <span className="block text-sm font-semibold">{titulo}</span>
+        <span className="block text-xs opacity-80">{descripcion}</span>
+      </span>
+    </button>
   )
 }

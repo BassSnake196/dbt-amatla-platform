@@ -7,7 +7,7 @@
 
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2, Paperclip, ShieldAlert, ShieldCheck, UploadCloud } from 'lucide-react'
+import { Camera, Loader2, Paperclip, ShieldAlert, ShieldCheck, UploadCloud } from 'lucide-react'
 import {
   confirmarSubidaArchivoAction,
   estadoSubidaArchivoAction,
@@ -28,13 +28,16 @@ interface SubirArchivoProps {
   etiqueta: string
   /** true → botón de ícono para filas compactas (lecciones). */
   compacto?: boolean
+  /** true → zona drag & drop con borde dashed (portada de curso). */
+  zona?: boolean
 }
 
-export function SubirArchivo({ proposito, objetivoId, accept, etiqueta, compacto }: SubirArchivoProps) {
+export function SubirArchivo({ proposito, objetivoId, accept, etiqueta, compacto, zona }: SubirArchivoProps) {
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
   const [fase, setFase] = useState<Fase>('inactivo')
   const [mensaje, setMensaje] = useState<string | null>(null)
+  const [arrastrando, setArrastrando] = useState(false)
 
   function fallar(texto: string) {
     setFase('rechazado')
@@ -103,6 +106,69 @@ export function SubirArchivo({ proposito, objetivoId, accept, etiqueta, compacto
   }
 
   const ocupado = fase === 'subiendo' || fase === 'escaneando'
+
+  function alSoltar(e: React.DragEvent) {
+    e.preventDefault()
+    setArrastrando(false)
+    if (ocupado) return
+    const archivo = e.dataTransfer.files?.[0]
+    if (archivo) void procesar(archivo)
+  }
+
+  if (zona) {
+    return (
+      <div className="space-y-2">
+        <input ref={inputRef} type="file" accept={accept} onChange={alElegir} className="hidden" />
+        <button
+          type="button"
+          disabled={ocupado}
+          onClick={() => inputRef.current?.click()}
+          onDragOver={(e) => {
+            e.preventDefault()
+            setArrastrando(true)
+          }}
+          onDragLeave={() => setArrastrando(false)}
+          onDrop={alSoltar}
+          className={`flex aspect-video w-full max-w-sm flex-col items-center justify-center gap-2 rounded-[10px] border-2 border-dashed px-4 text-center transition-colors disabled:opacity-60 ${
+            arrastrando
+              ? 'border-brand-primary bg-naranja-suave'
+              : 'border-borde bg-brand-surface/40 hover:border-brand-secondary hover:bg-brand-surface/70'
+          }`}
+        >
+          {ocupado ? (
+            <Loader2 size={26} className="animate-spin text-brand-secondary" aria-hidden="true" />
+          ) : (
+            <Camera size={26} className="text-brand-dark/40" aria-hidden="true" />
+          )}
+          <span className="text-xs font-medium text-brand-dark/70">
+            {fase === 'subiendo'
+              ? 'Subiendo…'
+              : fase === 'escaneando'
+                ? 'Escaneando…'
+                : 'Arrastra una imagen o haz click para subir'}
+          </span>
+        </button>
+
+        {fase === 'escaneando' && (
+          <p className="text-xs text-neutral-900/60">
+            Verificando el archivo con el antivirus — esto toma unos segundos.
+          </p>
+        )}
+        {fase === 'listo' && mensaje && (
+          <p className="inline-flex items-center gap-1 text-xs font-medium text-brand-secondary">
+            <ShieldCheck size={12} aria-hidden="true" />
+            {mensaje}
+          </p>
+        )}
+        {fase === 'rechazado' && mensaje && (
+          <p role="alert" className="inline-flex items-center gap-1 text-xs font-medium text-danger">
+            <ShieldAlert size={12} aria-hidden="true" />
+            {mensaje}
+          </p>
+        )}
+      </div>
+    )
+  }
 
   if (compacto) {
     return (

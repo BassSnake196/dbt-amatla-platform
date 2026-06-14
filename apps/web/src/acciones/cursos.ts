@@ -19,6 +19,10 @@ function extraerDatos(formData: FormData) {
   }
 }
 
+function leerEsPublico(formData: FormData): boolean {
+  return formData.get('esPublico') === 'true'
+}
+
 /** Los TRPCError de validación Zod traen un JSON de issues — volverlo legible. */
 function mensajeLegible(error: unknown): string {
   const mensaje = error instanceof Error ? error.message : 'Algo salió mal. Intenta de nuevo.'
@@ -36,7 +40,13 @@ export async function crearCursoAction(
 ): Promise<EstadoFormCurso> {
   const api = await apiServer()
   try {
-    await api.cursos.crear(extraerDatos(formData))
+    // El procedure `crear` deja el curso en DRAFT con los datos base; la
+    // visibilidad se aplica encadenando `cambiarVisibilidad` (sin tocar el
+    // backend). El thumbnail se sube después en la edición (necesita el id).
+    const { id } = await api.cursos.crear(extraerDatos(formData))
+    if (leerEsPublico(formData)) {
+      await api.cursos.cambiarVisibilidad({ id, esPublico: true })
+    }
   } catch (error) {
     return { error: mensajeLegible(error) }
   }
@@ -91,6 +101,7 @@ export async function actualizarCursoAction(
   const api = await apiServer()
   try {
     await api.cursos.actualizar({ id: cursoId, ...extraerDatos(formData) })
+    await api.cursos.cambiarVisibilidad({ id: cursoId, esPublico: leerEsPublico(formData) })
   } catch (error) {
     return { error: mensajeLegible(error) }
   }
