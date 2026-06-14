@@ -1,10 +1,9 @@
 import { auth } from '@/auth'
 import { apiServer } from '@/lib/api-server'
-import { HeroBienvenida } from '@/components/cursos/hero-bienvenida'
+import { HeroBienvenida, type VitrinaHero } from '@/components/cursos/hero-bienvenida'
 import { Descubrir } from '@/components/cursos/descubrir'
 import { Catalogo } from '@/components/cursos/catalogo'
 import { SesionesVivo } from '@/components/cursos/sesiones-vivo'
-import { LineaAyuda } from '@/components/cursos/linea-ayuda'
 
 // Portal del estudiante — catálogo estilo Udemy adaptado al modelo clínico:
 // los cursos los asigna la terapeuta, no se compran. Datos reales via tRPC:
@@ -31,11 +30,45 @@ export default async function HomePage() {
   const idsInscritos = new Set(cursos.map((curso) => curso.id))
   const descubrir = publicos.filter((curso) => !idsInscritos.has(curso.id))
 
+  // Vitrina del hero (C1): prioridad — curso en progreso → primer inscrito con
+  // imagen → cualquier público con imagen. Si no hay imagen, la vitrina cae a un
+  // placeholder de marca (gradiente + inicial), nunca a imagen rota (R6).
+  const vitrina: VitrinaHero | null = (() => {
+    if (enCurso) {
+      const curso = cursos.find((c) => c.id === enCurso.cursoId)
+      return {
+        modo: 'continuar',
+        titulo: enCurso.titulo,
+        href: `/cursos/${enCurso.cursoId}/lecciones/${enCurso.leccionId}`,
+        thumbnailUrl: curso?.thumbnailUrl ?? null,
+      }
+    }
+    const sugerido =
+      cursos.find((c) => c.thumbnailUrl) ??
+      descubrir.find((c) => c.thumbnailUrl) ??
+      cursos[0] ??
+      descubrir[0] ??
+      null
+    return sugerido
+      ? {
+          modo: 'sugerencia',
+          titulo: sugerido.titulo,
+          href: `/cursos/${sugerido.id}`,
+          thumbnailUrl: sugerido.thumbnailUrl ?? null,
+        }
+      : null
+  })()
+
   return (
     <div className="mx-auto max-w-6xl space-y-10">
       {cursos.length > 0 ? (
         <>
-          <HeroBienvenida nombre={nombre} progresoGlobal={progresoGlobal} enCurso={enCurso} />
+          <HeroBienvenida
+            nombre={nombre}
+            progresoGlobal={progresoGlobal}
+            enCurso={enCurso}
+            vitrina={vitrina}
+          />
           <Catalogo cursos={cursos} />
         </>
       ) : (
@@ -51,7 +84,6 @@ export default async function HomePage() {
       <Descubrir cursos={descubrir} />
 
       <SesionesVivo sesiones={sesiones} />
-      <LineaAyuda />
     </div>
   )
 }

@@ -1,18 +1,20 @@
 import { Phone } from 'lucide-react'
 
-// Franja discreta de apoyo — principio de UI del prompt maestro:
-// banner tenue con teléfono de emergencia, nunca modal bloqueante.
+// Footer de apoyo global — vive en el shell de la plataforma (C2), no en cada
+// página. Franja discreta con teléfono de emergencia, nunca modal bloqueante.
+// Fluye con el layout (static), no tapa contenido.
 export function LineaAyuda() {
   return (
-    <aside
-      className="flex flex-wrap items-center gap-3 rounded-card border border-danger/20 bg-danger/5 px-5 py-4"
+    <footer
+      className="flex flex-wrap items-center gap-2 border-t border-borde bg-[#f0ede8] px-6 py-3 text-[13px] text-texto-suave"
       aria-label="Apoyo en momentos difíciles"
     >
-      <Phone size={18} className="shrink-0 text-danger" aria-hidden="true" />
-      <p className="text-sm text-brand-dark">
-        ¿Estás pasando por un momento difícil? Habla con tu terapeuta o llama a la{' '}
-        <strong className="font-semibold">Línea de la Vida: 800 911 2000</strong> — disponible 24/7.
+      <Phone size={14} className="shrink-0 text-teal" aria-hidden="true" />
+      <p>
+        ¿Estás pasando por un momento difícil? Habla con tu terapeuta o llama a la Línea de la
+        Vida:{' '}
+        <span className="font-semibold text-brand-dark">800 911 2000</span> — disponible 24/7.
       </p>
-    </aside>
+    </footer>
   )
 }

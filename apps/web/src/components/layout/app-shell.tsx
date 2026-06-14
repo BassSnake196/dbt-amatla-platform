@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from 'react'
 import { Sidebar } from './sidebar'
 import { Header } from './header'
+import { LineaAyuda } from '@/components/cursos/linea-ayuda'
 
 export interface UsuarioShell {
   nombre: string
@@ -29,6 +30,7 @@ export function AppShell({ usuario, children }: { usuario: UsuarioShell; childre
       <div className="flex min-w-0 flex-1 flex-col">
         <Header usuario={usuario} onOpenSidebar={() => setSidebarOpen(true)} />
         <main className="flex-1 bg-fondo px-4 py-6 md:px-8">{children}</main>
+        <LineaAyuda />
       </div>
     </div>
   )
