@@ -25,8 +25,14 @@ export const catalogoRouter = router({
    * Sin sesión (publicProcedure) — visible para cualquier visitante.
    */
   publicos: publicProcedure.output(z.array(cursoPublico)).query(async ({ ctx }) => {
+    // Si hay sesión, ocultar los cursos de los que el usuario fue removido
+    // (CourseBlock): "desaparece de tu catálogo". Sin sesión no se filtra.
+    const where: Prisma.CourseWhereInput = { status: 'PUBLISHED', isPublic: true }
+    if (ctx.user) {
+      where.NOT = { blocks: { some: { studentId: ctx.user.id } } }
+    }
     const cursos = await ctx.prisma.course.findMany({
-      where: { status: 'PUBLISHED', isPublic: true },
+      where,
       orderBy: { createdAt: 'desc' },
       include: {
         instructor: { select: { name: true } },
@@ -59,6 +65,16 @@ export const catalogoRouter = router({
         select: { id: true },
       })
       if (!curso) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Curso no disponible.' })
+      }
+
+      // Expulsión autoritativa: si el instructor lo sacó, no puede re-inscribirse
+      // solo (mismo NOT_FOUND que un curso inexistente — no revela el bloqueo).
+      const bloqueado = await ctx.prisma.courseBlock.findUnique({
+        where: { studentId_courseId: { studentId: ctx.user.id, courseId: input.cursoId } },
+        select: { id: true },
+      })
+      if (bloqueado) {
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Curso no disponible.' })
       }
 

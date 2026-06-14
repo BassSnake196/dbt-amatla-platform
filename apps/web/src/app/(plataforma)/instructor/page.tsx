@@ -114,15 +114,31 @@ export default async function InstructorPage() {
                 >
                   <div
                     className="relative flex h-28 items-end overflow-hidden p-4"
-                    style={{ background: arte.fondo }}
+                    style={curso.thumbnailUrl ? undefined : { background: arte.fondo }}
                   >
-                    <span
-                      aria-hidden="true"
-                      className="pointer-events-none absolute -right-2 -top-9 select-none font-serif text-[8rem] leading-none"
-                      style={{ color: arte.psi }}
-                    >
-                      Ψ
-                    </span>
+                    {curso.thumbnailUrl ? (
+                      <>
+                        {/* Portada real del instructor (URL firmada, no next/image) */}
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={curso.thumbnailUrl}
+                          alt=""
+                          className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        />
+                        <span
+                          className="absolute inset-0 bg-gradient-to-t from-black/45 to-transparent"
+                          aria-hidden="true"
+                        />
+                      </>
+                    ) : (
+                      <span
+                        aria-hidden="true"
+                        className="pointer-events-none absolute -right-2 -top-9 select-none font-serif text-[8rem] leading-none transition-transform duration-300 group-hover:scale-105"
+                        style={{ color: arte.psi }}
+                      >
+                        Ψ
+                      </span>
+                    )}
                     <span className="relative rounded-full bg-black/25 px-3 py-1 text-[11px] font-medium text-white backdrop-blur-sm">
                       {curso.categoria}
                     </span>

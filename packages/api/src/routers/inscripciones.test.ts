@@ -95,10 +95,12 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await prisma.enrollment.deleteMany({ where: { courseId: { in: [cursoId, cursoAjenoId] } } })
+  await prisma.courseBlock.deleteMany({ where: { courseId: { in: [cursoId, cursoAjenoId] } } })
 })
 
 afterAll(async () => {
   await prisma.enrollment.deleteMany({ where: { courseId: { in: [cursoId, cursoAjenoId] } } })
+  await prisma.courseBlock.deleteMany({ where: { courseId: { in: [cursoId, cursoAjenoId] } } })
   await prisma.auditLog.deleteMany({ where: { userId: { startsWith: PREFIJO } } })
   await prisma.course.deleteMany({ where: { id: { in: [cursoId, cursoAjenoId] } } })
   await prisma.user.deleteMany({ where: { id: { startsWith: PREFIJO } } })
@@ -194,6 +196,39 @@ describe('inscripciones.revocar', () => {
       callerComo(OTRO_INSTRUCTOR).inscripciones.revocar({ cursoId, studentId: ESTUDIANTE_A.id }),
     ).rejects.toMatchObject({ code: 'NOT_FOUND' })
     // sigue inscrito (no se borró)
+    expect(await prisma.enrollment.count({ where: { courseId: cursoId } })).toBe(1)
+  })
+
+  it('revocar crea un CourseBlock (expulsión autoritativa) con blockedBy del instructor', async () => {
+    await callerComo(INSTRUCTORA).inscripciones.asignar({ cursoId, studentId: ESTUDIANTE_A.id })
+    await callerComo(INSTRUCTORA).inscripciones.revocar({ cursoId, studentId: ESTUDIANTE_A.id })
+
+    const bloqueo = await prisma.courseBlock.findUnique({
+      where: { studentId_courseId: { studentId: ESTUDIANTE_A.id, courseId: cursoId } },
+    })
+    expect(bloqueo).not.toBeNull()
+    expect(bloqueo!.blockedBy).toBe(INSTRUCTORA.id)
+  })
+})
+
+describe('inscripciones.asignar — limpieza de bloqueo', () => {
+  it('re-asignar a un estudiante bloqueado borra el CourseBlock', async () => {
+    // Bloqueo previo: asignar → revocar deja un CourseBlock
+    await callerComo(INSTRUCTORA).inscripciones.asignar({ cursoId, studentId: ESTUDIANTE_A.id })
+    await callerComo(INSTRUCTORA).inscripciones.revocar({ cursoId, studentId: ESTUDIANTE_A.id })
+    expect(
+      await prisma.courseBlock.findUnique({
+        where: { studentId_courseId: { studentId: ESTUDIANTE_A.id, courseId: cursoId } },
+      }),
+    ).not.toBeNull()
+
+    // Re-asignar limpia el bloqueo y recrea la inscripción
+    await callerComo(INSTRUCTORA).inscripciones.asignar({ cursoId, studentId: ESTUDIANTE_A.id })
+    expect(
+      await prisma.courseBlock.findUnique({
+        where: { studentId_courseId: { studentId: ESTUDIANTE_A.id, courseId: cursoId } },
+      }),
+    ).toBeNull()
     expect(await prisma.enrollment.count({ where: { courseId: cursoId } })).toBe(1)
   })
 })

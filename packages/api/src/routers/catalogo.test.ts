@@ -101,9 +101,9 @@ beforeAll(async () => {
 })
 
 afterAll(async () => {
-  await prisma.enrollment.deleteMany({
-    where: { courseId: { in: [cursoPublicoId, cursoPrivadoId, cursoBorradorId] } },
-  })
+  const ids = [cursoPublicoId, cursoPrivadoId, cursoBorradorId]
+  await prisma.courseBlock.deleteMany({ where: { courseId: { in: ids } } })
+  await prisma.enrollment.deleteMany({ where: { courseId: { in: ids } } })
   await prisma.auditLog.deleteMany({ where: { userId: { startsWith: PREFIJO } } })
   await prisma.course.deleteMany({ where: { instructorId: INSTRUCTORA.id } })
   await prisma.user.deleteMany({ where: { id: { startsWith: PREFIJO } } })
@@ -189,5 +189,34 @@ describe('cursos.cambiarVisibilidad', () => {
     await expect(
       callerComo(USUARIO).cursos.cambiarVisibilidad({ id: cursoBorradorId, esPublico: false }),
     ).rejects.toMatchObject({ code: 'FORBIDDEN' })
+  })
+})
+
+describe('catalogo — bloqueo (CourseBlock) tras expulsión', () => {
+  beforeAll(async () => {
+    // El instructor sacó a USUARIO del curso público → CourseBlock
+    await prisma.courseBlock.create({
+      data: { studentId: USUARIO.id, courseId: cursoPublicoId, blockedBy: INSTRUCTORA.id },
+    })
+  })
+
+  afterAll(async () => {
+    await prisma.courseBlock.deleteMany({
+      where: { studentId: USUARIO.id, courseId: cursoPublicoId },
+    })
+  })
+
+  it('un usuario bloqueado no puede re-inscribirse en el curso público (NOT_FOUND)', async () => {
+    await expect(
+      callerComo(USUARIO).catalogo.inscribirme({ cursoId: cursoPublicoId }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' })
+  })
+
+  it('publicos oculta el curso al usuario bloqueado pero lo muestra sin sesión', async () => {
+    const conSesion = await callerComo(USUARIO).catalogo.publicos()
+    expect(conSesion.map((c) => c.id)).not.toContain(cursoPublicoId)
+
+    const sinSesion = await callerComo(null).catalogo.publicos()
+    expect(sinSesion.map((c) => c.id)).toContain(cursoPublicoId)
   })
 })

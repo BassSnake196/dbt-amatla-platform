@@ -15,6 +15,8 @@ const cursoResumen = z.object({
   titulo: z.string(),
   categoria: z.string(),
   status: z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']),
+  // URL firmada on-demand del thumbnail (regla #10: nunca se guarda la URL)
+  thumbnailUrl: z.string().nullable(),
   estudiantes: z.number().int(),
   secciones: z.number().int(),
   lecciones: z.number().int(),
@@ -91,6 +93,7 @@ export const cursosRouter = router({
       titulo: curso.title,
       categoria: curso.category,
       status: curso.status,
+      thumbnailUrl: curso.thumbnail ? obtenerAlmacen().urlLectura(curso.thumbnail).url : null,
       estudiantes: curso._count.enrollments,
       secciones: curso._count.sections,
       lecciones: curso.sections.reduce((total, seccion) => total + seccion._count.lessons, 0),

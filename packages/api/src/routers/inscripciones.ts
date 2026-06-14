@@ -93,6 +93,11 @@ export const inscripcionesRouter = router({
 
       try {
         await ctx.prisma.$transaction(async (tx) => {
+          // Re-agregar a un estudiante limpia un bloqueo previo (decisión:
+          // "bloqueo hasta re-asignar"): el instructor recupera el control.
+          await tx.courseBlock.deleteMany({
+            where: { studentId: input.studentId, courseId: input.cursoId },
+          })
           await tx.enrollment.create({
             data: {
               studentId: input.studentId,
@@ -142,6 +147,13 @@ export const inscripcionesRouter = router({
 
       await ctx.prisma.$transaction(async (tx) => {
         await tx.enrollment.delete({ where: { id: inscripcion.id } })
+        // Bloqueo autoritativo: aunque el curso sea público, el estudiante NO
+        // podrá re-inscribirse solo. Re-asignarlo (asignar) limpia el bloqueo.
+        await tx.courseBlock.upsert({
+          where: { studentId_courseId: { studentId: input.studentId, courseId: input.cursoId } },
+          create: { studentId: input.studentId, courseId: input.cursoId, blockedBy: ctx.user.id },
+          update: { blockedBy: ctx.user.id },
+        })
         await auditFromRequest(
           ctx,
           'REVOKE_ENROLLMENT',

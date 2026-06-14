@@ -67,6 +67,7 @@ model User {
   auditLogs           AuditLog[]
   fileUploads         FileUpload[]
   videoUploads        VideoUpload[]
+  courseBlocks        CourseBlock[]  @relation("StudentBlocks")
 }
 
 // ===== Auth.js (NextAuth v5) — sesiones en BD para poder invalidarlas
@@ -141,11 +142,31 @@ model Course {
   sections       Section[]
   enrollments    Enrollment[]
   calendarEvents CalendarEvent[]
+  blocks         CourseBlock[]
 
   @@index([instructorId])
   @@index([status])
   // Catálogo público "General": consulta status = PUBLISHED AND isPublic = true
   @@index([status, isPublic])
+}
+
+// Bloqueo autoritativo: cuando el instructor/admin saca a un estudiante de un
+// curso (revocar Enrollment), se crea este registro para que el estudiante NO
+// pueda volver a auto-inscribirse en un curso público. Re-asignarlo (asignar)
+// borra el bloqueo. Oculta además el curso de su catálogo.
+model CourseBlock {
+  id        String   @id @default(cuid())
+  studentId String
+  courseId  String
+  blockedBy String // userId del instructor/admin que lo sacó (auditoría aparte)
+  createdAt DateTime @default(now())
+
+  student User   @relation("StudentBlocks", fields: [studentId], references: [id], onDelete: Cascade)
+  course  Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  // Un solo bloqueo por estudiante y curso
+  @@unique([studentId, courseId])
+  @@index([courseId])
 }
 
 model Section {
