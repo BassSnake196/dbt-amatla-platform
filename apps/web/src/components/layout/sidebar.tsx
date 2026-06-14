@@ -17,7 +17,7 @@ import { cerrarSesion } from '@/acciones/auth'
 
 const NAV_ITEMS = [
   { href: '/', label: 'Inicio', icon: Home },
-  { href: '/general', label: 'Explorar', icon: Compass },
+  { href: '/explorar', label: 'Explorar', icon: Compass },
 ]
 
 // Entrada extra solo para instructores y administradores

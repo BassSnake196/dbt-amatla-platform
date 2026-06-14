@@ -10,7 +10,7 @@ import { AlertCircle, Clock3, Loader2, PlayCircle, Sparkles, X } from 'lucide-re
 import { formatearDuracion } from '@/lib/formato'
 import { inscribirmeAction } from '@/acciones/catalogo'
 
-interface CursoPublico {
+export interface CursoPublico {
   id: string
   titulo: string
   categoria: string

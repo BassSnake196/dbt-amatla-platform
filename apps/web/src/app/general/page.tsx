@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { auth } from '@/auth'
 import { iniciarConGoogle } from '@/acciones/auth'
 import { apiServer } from '@/lib/api-server'
-import { CatalogoPublico } from '@/components/publico/catalogo-publico'
+import { ExploradorPublico } from '@/components/publico/explorador-publico'
 
 export const metadata = { title: 'Cursos · General — DBT.Amatla' }
 
@@ -15,17 +15,17 @@ export default async function GeneralPage() {
   const cursos = await api.catalogo.publicos()
 
   return (
-    <div className="min-h-dvh bg-neutral-50">
-      <header className="border-b border-neutral-100 bg-white">
+    <div className="min-h-dvh bg-fondo">
+      <header className="border-b border-borde bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-          <Link href="/general" className="font-serif text-xl font-semibold tracking-wide text-brand-dark">
-            DBT.<span className="text-brand-primary">Amatla</span>
+          <Link href="/general" className="font-serif text-xl font-semibold tracking-wide text-texto">
+            DBT.<span className="text-naranja">Amatla</span>
           </Link>
 
           {session?.user ? (
             <Link
               href="/"
-              className="inline-flex items-center justify-center rounded-lg border border-neutral-100 bg-white px-4 py-2.5 text-sm font-semibold text-brand-dark shadow-card transition-colors hover:bg-neutral-100"
+              className="inline-flex items-center justify-center rounded-lg border border-borde bg-white px-4 py-2.5 text-sm font-semibold text-texto hover:bg-crema-hover"
             >
               Ir a mi plataforma
             </Link>
@@ -33,7 +33,7 @@ export default async function GeneralPage() {
             <form action={iniciarConGoogle}>
               <button
                 type="submit"
-                className="inline-flex items-center justify-center gap-3 rounded-lg border border-neutral-100 bg-white px-4 py-2.5 text-sm font-semibold text-brand-dark shadow-card transition-colors hover:bg-neutral-100"
+                className="inline-flex items-center justify-center gap-3 rounded-lg border border-borde bg-white px-4 py-2.5 text-sm font-semibold text-texto hover:bg-crema-hover"
               >
                 <GoogleIcon />
                 Continuar con Google
@@ -43,14 +43,58 @@ export default async function GeneralPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-8">
-        <h1 className="font-serif text-3xl font-semibold text-brand-dark">Cursos disponibles</h1>
-        <p className="mt-2 text-sm text-neutral-900/60">
-          Explora los cursos abiertos de DBT.Amatla. Inicia sesión para acceder al contenido.
+      {/* Hero de marca */}
+      <section className="relative overflow-hidden bg-sidebar text-white">
+        <div className="relative mx-auto max-w-6xl px-4 py-16 md:py-20">
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute -right-16 top-1/2 -translate-y-1/2 select-none font-serif text-[20rem] leading-none text-white/10"
+          >
+            Ψ
+          </span>
+
+          <p className="text-eyebrow uppercase tracking-wider text-naranja">
+            Entrenamiento en habilidades DBT
+          </p>
+          <h1 className="mt-3 max-w-3xl font-serif text-4xl font-semibold leading-tight md:text-5xl">
+            Habilidades que se practican, no solo se aprenden.
+          </h1>
+          <p className="mt-4 max-w-xl text-base text-white/70 md:text-lg">
+            Cursos abiertos de terapia dialéctico-conductual para acompañarte, paso a paso y a tu
+            ritmo.
+          </p>
+
+          <div className="relative mt-8">
+            {session?.user ? (
+              <Link
+                href="/"
+                className="inline-flex items-center justify-center gap-3 rounded-lg bg-naranja px-6 py-3 text-sm font-semibold text-white hover:opacity-90"
+              >
+                Ir a mi plataforma
+              </Link>
+            ) : (
+              <form action={iniciarConGoogle}>
+                <button
+                  type="submit"
+                  className="inline-flex items-center justify-center gap-3 rounded-lg bg-naranja px-6 py-3 text-sm font-semibold text-white hover:opacity-90"
+                >
+                  <GoogleIcon />
+                  Continuar con Google
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <main className="mx-auto max-w-6xl px-4 py-12">
+        <h2 className="text-heading text-texto">Cursos disponibles</h2>
+        <p className="mt-1 text-body text-texto-suave">
+          Explora y abre un curso para empezar.
         </p>
 
-        <div className="mt-8">
-          <CatalogoPublico cursos={cursos} sesionActiva={!!session?.user} />
+        <div className="mt-6">
+          <ExploradorPublico cursos={cursos} sesionActiva={!!session?.user} />
         </div>
       </main>
     </div>

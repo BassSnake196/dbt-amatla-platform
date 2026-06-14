@@ -1,5 +1,5 @@
 # 📌 Estado del Proyecto: Plataforma E-Learning
-- **Última actualización:** 2026-06-14 (sesión 10 — REDISEÑO) — Arranque de la sesión de rediseño visual. **Bloque 4 cerrado: home con hero de bienvenida (progreso global) + sección "Descubrir" inline + aviso de login amistoso + login solo-Google (redisenio §4,§13,§14 + decisión §3.1).** Bloque 3: sidebar + topbar + avatar real + 3 stubs. Bloque 2: tokens del sistema de diseño (§1). Bloque 1: FIX §15. Decisiones de flujo tomadas con el usuario: Inicio = mis cursos + descubrir público (sin muro vacío); Explorar dentro del shell; quitar "Mis cursos" del sidebar; stubs "Próximamente" para Calendario/Notificaciones/Configuración. Antes (sesión 9): catálogo público "General" + visibilidad (público/privado), migración `add_course_public`, 237 tests.
+- **Última actualización:** 2026-06-14 (sesión 10 — REDISEÑO) — Arranque de la sesión de rediseño visual. **Bloque 5 cerrado: Explorar in-shell (`/explorar`) + rediseño del catálogo público `/general` (hero de marca) + búsqueda funcional del catálogo público (redisenio §13,§14 + decisión §3.2).** Bloque 4: home (hero + Descubrir) + login solo-Google. Bloque 3: sidebar + topbar + avatar real + 3 stubs. Bloque 2: tokens (§1). Bloque 1: FIX §15. Decisiones de flujo tomadas con el usuario: Inicio = mis cursos + descubrir público (sin muro vacío); Explorar dentro del shell; quitar "Mis cursos" del sidebar; stubs "Próximamente" para Calendario/Notificaciones/Configuración. Antes (sesión 9): catálogo público "General" + visibilidad (público/privado), migración `add_course_public`, 237 tests.
 - **Fase Actual:** Fase 4 ✅ (features del MVP completas). **Pendiente para usar el MVP de punta a punta en local: AUTH REAL (Google login / Magic Link) — hoy solo se entra con `/api/dev-login`.** Ver "Pendientes del prompt maestro" más abajo. Siguiente: cerrar auth real → Fase 5 (calidad/CI).
 - **Objetivo del Sprint:** Cerrar el MVP: asignación, progreso secuencial, quiz, editor TEXT, panel admin, progreso por estudiante (certificado/email/granular/móvil DIFERIDOS)
 
@@ -71,6 +71,29 @@
 - [x] Preview de lección + publicar/archivar con validación
 
 ## 🧠 Memoria de Decisiones (ADRs)
+
+### ADR — 2026-06-14 (sesión 10, rediseño) — Bloque 5: Explorar in-shell + rediseño /general + búsqueda pública (redisenio §13,§14 + decisión §3.2)
+**Alcance:** frontend (ejecutor Sonnet 4.6; orquestador planificó/revisó/verificó/commiteó). Sin cambios de
+schema ni routers → no se recompiló la API. **Búsqueda reutilizable (§14, nuevo `components/publico/
+explorador-publico.tsx`, client):** input de búsqueda + pills de categoría, filtra client-side por
+título/categoría/instructora sobre `catalogo.publicos` ya cargado; renderiza el grid vía el `CatalogoPublico`
+existente (autoinscripción + modal de login del Bloque 4 intactos). Maneja estados vacíos (sin cursos / sin
+coincidencias). Único cambio a `catalogo-publico.tsx`: se EXPORTA el tipo `CursoPublico` para reusarlo.
+**Explorar in-shell (decisión §3.2, nueva `(plataforma)/explorar/page.tsx`, server):** el catálogo público
+se renderiza ahora DENTRO del shell (sidebar+topbar) para logueados; cabecera "Explorar" + `<ExploradorPublico
+sesionActiva={true}>`. **Sin dedupe** (Explorar = catálogo completo; el clic en uno ya inscrito reinscribe
+idempotente y abre). El dedupe sigue solo en "Descubrir" de la home (teaser). **Sidebar:** la entrada
+"Explorar" se repuntó de `/general` → `/explorar` (única línea). **`/general` queda solo para anónimos**
+(sigue top-level sin gate, con cabecera propia; el gate de `(plataforma)` ya manda allí al anónimo):
+rediseño hero-céntrico (§13, fundamentado con ui-ux-pro-max landing) — fondo crema (`bg-fondo`), cabecera
+con logo + CTA (Google si anónimo / "Ir a mi plataforma" si logueado), HERO de marca `bg-sidebar` con
+motivo Ψ decorativo, eyebrow naranja, titular tesis ("Habilidades que se practican, no solo se aprenden."),
+subtítulo y UN CTA dominante; debajo "Cursos disponibles" + `<ExploradorPublico sesionActiva={!!session}>`.
+Sin estadísticas inventadas (§13). **Verificación:** `type-check -w @amatla/web` en verde + smoke HTTP con
+dev server real: `/general` (anónimo) → 200 con hero (tesis), buscador y CTA Google; `/explorar`
+(dev-login estudiante) → 200 con título "Explorar", buscador, dentro del shell, y el sidebar con
+`href="/explorar"`. 237 tests siguen en verde (solo UI, sin tests nuevos). Commit `feat:` (añade ruta
+Explorar in-shell + búsqueda del catálogo público).
 
 ### ADR — 2026-06-14 (sesión 10, rediseño) — Bloque 4: home (hero + Descubrir) + login solo-Google (redisenio §4,§13,§14 + decisión §3.1)
 **Alcance:** frontend (ejecutor Sonnet 4.6; orquestador planificó/revisó/verificó/commiteó). Sin cambios de
