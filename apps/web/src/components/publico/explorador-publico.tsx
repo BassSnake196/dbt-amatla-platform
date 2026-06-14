@@ -88,7 +88,7 @@ export function ExploradorPublico({
           <p className="text-body text-texto-suave">Ningún curso coincide con tu búsqueda.</p>
         </div>
       ) : (
-        <CatalogoPublico cursos={cursosFiltrados} sesionActiva={sesionActiva} />
+        <CatalogoPublico cursos={cursosFiltrados} sesionActiva={sesionActiva} destacado />
       )}
     </div>
   )

@@ -6,7 +6,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { AlertCircle, Clock3, Loader2, PlayCircle, Sparkles, X } from 'lucide-react'
+import { AlertCircle, ArrowRight, Clock3, Loader2, PlayCircle, Sparkles, X } from 'lucide-react'
 import { formatearDuracion } from '@/lib/formato'
 import { inscribirmeAction } from '@/acciones/catalogo'
 
@@ -52,9 +52,12 @@ function artePara(categoria: string): ArteCategoria {
 export function CatalogoPublico({
   cursos,
   sesionActiva,
+  destacado = false,
 }: {
   cursos: CursoPublico[]
   sesionActiva: boolean
+  /** Resalta el primer curso como hero card sobre el grid (página Explorar). */
+  destacado?: boolean
 }) {
   const router = useRouter()
   const [, iniciarTransicion] = useTransition()
@@ -91,6 +94,10 @@ export function CatalogoPublico({
     )
   }
 
+  // Hero card del curso destacado (Explorar): el primero del catálogo filtrado.
+  const cursoHero = destacado ? cursos[0] : undefined
+  const cursosGrid = cursoHero ? cursos.slice(1) : cursos
+
   return (
     <div>
       {error && (
@@ -103,8 +110,16 @@ export function CatalogoPublico({
         </div>
       )}
 
+      {cursoHero && (
+        <HeroCardCurso
+          curso={cursoHero}
+          cargando={cargandoId === cursoHero.id}
+          onAbrir={() => abrirCurso(cursoHero)}
+        />
+      )}
+
       <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-        {cursos.map((curso) => {
+        {cursosGrid.map((curso) => {
           const arte = artePara(curso.categoria)
           const cargando = cargandoId === curso.id
 
@@ -217,6 +232,77 @@ export function CatalogoPublico({
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// Hero card del curso destacado (Explorar): imagen ancha + info y CTA naranja.
+function HeroCardCurso({
+  curso,
+  cargando,
+  onAbrir,
+}: {
+  curso: CursoPublico
+  cargando: boolean
+  onAbrir: () => void
+}) {
+  const arte = artePara(curso.categoria)
+
+  return (
+    <div className="mb-8 grid gap-7 rounded-2xl border border-borde bg-white p-5 md:grid-cols-2 md:p-7">
+      {/* Imagen 16:9 — thumbnail real o arte generativo */}
+      <div
+        className="relative aspect-video overflow-hidden rounded-[10px]"
+        style={curso.thumbnailUrl ? undefined : { background: arte.fondo }}
+      >
+        {curso.thumbnailUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={curso.thumbnailUrl} alt="" className="h-full w-full object-cover" />
+        ) : (
+          <span
+            className="pointer-events-none absolute -right-4 -top-10 select-none font-serif text-[12rem] leading-none"
+            style={{ color: arte.psi }}
+            aria-hidden="true"
+          >
+            Ψ
+          </span>
+        )}
+      </div>
+
+      <div className="flex flex-col justify-center">
+        <span className="w-fit rounded-md bg-teal-suave px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-teal">
+          Te puede interesar
+        </span>
+        <h2 className="mt-3 font-serif text-xl font-bold leading-snug text-brand-dark md:text-2xl">
+          {curso.titulo}
+        </h2>
+        <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-texto-suave">
+          <span>{curso.instructora}</span>
+          <span aria-hidden="true">·</span>
+          <span>
+            {curso.lecciones} {curso.lecciones === 1 ? 'lección' : 'lecciones'}
+          </span>
+          {curso.duracionSegundos > 0 && (
+            <>
+              <span aria-hidden="true">·</span>
+              <span>{formatearDuracion(curso.duracionSegundos)}</span>
+            </>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={onAbrir}
+          disabled={cargando}
+          className="mt-5 inline-flex w-fit items-center gap-2 rounded-lg bg-naranja px-6 py-3 text-sm font-semibold text-brand-dark transition-all hover:-translate-y-px hover:bg-[#e09610] active:translate-y-0 active:scale-[0.98] disabled:cursor-wait disabled:opacity-75 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
+        >
+          {cargando ? (
+            <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+          ) : (
+            <ArrowRight size={16} aria-hidden="true" />
+          )}
+          Comenzar curso
+        </button>
+      </div>
     </div>
   )
 }
