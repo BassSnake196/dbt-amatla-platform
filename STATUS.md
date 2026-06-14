@@ -1,5 +1,5 @@
 # 📌 Estado del Proyecto: Plataforma E-Learning
-- **Última actualización:** 2026-06-14 (sesión 10 — REDISEÑO) — Arranque de la sesión de rediseño visual. **Bloque 2 cerrado: tokens del sistema de diseño (redisenio §1).** Bloque 1 cerrado: FIX §15 (crear sección/lección sin reload). Decisiones de flujo tomadas con el usuario: Inicio = mis cursos + descubrir público (sin muro vacío); Explorar dentro del shell; quitar "Mis cursos" del sidebar; stubs "Próximamente" para Calendario/Notificaciones/Configuración. Antes (sesión 9): catálogo público "General" + visibilidad (público/privado), migración `add_course_public`, 237 tests.
+- **Última actualización:** 2026-06-14 (sesión 10 — REDISEÑO) — Arranque de la sesión de rediseño visual. **Bloque 3 cerrado: rediseño de sidebar + topbar + avatar real + 3 stubs "Próximamente" (redisenio §2,§3,§14).** Bloque 2: tokens del sistema de diseño (§1). Bloque 1: FIX §15 (crear sección/lección sin reload). Decisiones de flujo tomadas con el usuario: Inicio = mis cursos + descubrir público (sin muro vacío); Explorar dentro del shell; quitar "Mis cursos" del sidebar; stubs "Próximamente" para Calendario/Notificaciones/Configuración. Antes (sesión 9): catálogo público "General" + visibilidad (público/privado), migración `add_course_public`, 237 tests.
 - **Fase Actual:** Fase 4 ✅ (features del MVP completas). **Pendiente para usar el MVP de punta a punta en local: AUTH REAL (Google login / Magic Link) — hoy solo se entra con `/api/dev-login`.** Ver "Pendientes del prompt maestro" más abajo. Siguiente: cerrar auth real → Fase 5 (calidad/CI).
 - **Objetivo del Sprint:** Cerrar el MVP: asignación, progreso secuencial, quiz, editor TEXT, panel admin, progreso por estudiante (certificado/email/granular/móvil DIFERIDOS)
 
@@ -71,6 +71,36 @@
 - [x] Preview de lección + publicar/archivar con validación
 
 ## 🧠 Memoria de Decisiones (ADRs)
+
+### ADR — 2026-06-14 (sesión 10, rediseño) — Bloque 3: rediseño de sidebar + topbar + avatar real + stubs (redisenio §2,§3,§14)
+**Alcance:** SOLO frontend (ejecutor Sonnet 4.6; orquestador planificó/revisó/verificó/commiteó). Sin
+cambios de schema ni routers → no se recompiló la API. **Avatar real (§14):** `session.user.image` se
+propaga `layout → app-shell (UsuarioShell.imagen) → sidebar (48px) + topbar (36px)`; sin foto → iniciales
+en `bg-naranja-suave text-naranja`. **Topbar (§3, `header.tsx`):** se ELIMINÓ `MOCK_PROGRESS=35` y la
+barra de progreso falsa (decisión del usuario: el progreso global real vive en el anillo del hero de la
+home, Bloque 4 — no se mete un `estudiante.dashboard()` por navegación porque `apiServer()` no está
+cacheado y choca con el requisito de rendimiento percibido). Topbar nuevo = hamburguesa móvil + search
+pill DECORATIVO (`<div>` no interactivo "Buscar cursos…"; la búsqueda funcional §14 irá en Bloque 4 home
+y Bloque 5 explorar, donde están los datos cargados) + iconos decorativos Bell/Bookmark (regla de oro:
+decoración sin lógica permitida, `aria-hidden`) + avatar; si `SUPER_ADMIN` muestra nombre + "Administrador"
+a la izquierda del avatar. **Sidebar (§2, `sidebar.tsx`):** header con avatar + wordmark `DBT.Amatla`
+(link a `/`) + subtítulo. Nav reestructurado (§3.3/§3.4): se QUITÓ "Mis cursos" (ruta inexistente);
+base = Inicio (`/`) + Explorar (`/general`); +Panel de instructor (`/instructor`) para INSTRUCTOR/
+SUPER_ADMIN; +Administración (`/admin/usuarios`) para SUPER_ADMIN; grupo inferior tras `flex-1` con los
+3 stubs Calendario/Notificaciones/Configuración. Estado activo §2 = `bg-white/10 border-l-[3px]
+border-naranja pl-[13px]` (antes era teal sólido). Se OMITIÓ el botón CTA "Continuar" de §2 (sin destino
+real a nivel de layout → regla de oro, nada de botones muertos). **Explorar sigue → `/general`** por ahora
+(Bloque 5 lo repuntará a la versión in-shell). **Fondo crema global (§1):** `<main>` del shell pasa a
+`bg-fondo` — resuelve el pendiente del Bloque 2 sin tocar `body` (sidebar oscuro + topbar blanco +
+contenido crema). **Stubs "Próximamente":** componente compartido `components/layout/proximamente.tsx`
+(server, presentacional: card + icono en `bg-teal-suave`, eyebrow, H1 `text-display`, body) + 3 páginas
+server `(plataforma)/{calendario,notificaciones,configuracion}/page.tsx`. **Verificación:**
+`type-check -w @amatla/web` en verde + smoke HTTP con dev server real (dev-login): `/`, `/calendario`,
+`/notificaciones`, `/configuracion`, `/admin/usuarios` → 200; confirmado en el HTML que el admin ve
+"Administración"/"Administrador"/search pill y la stub "Próximamente"; que `35% completado` (mock) y
+"Mis cursos" YA NO aparecen; y que el estudiante NO ve "Administración" ni "Panel de instructor" pero sí
+"Inicio". (Nota de entorno: un proceso `next dev` viejo ocupaba el 3000 dando 500; el dev server fresco
+con estos cambios corrió en 3001.) Sin tests nuevos (solo visual). 237 tests siguen en verde.
 
 ### ADR — 2026-06-14 (sesión 10, rediseño) — Bloque 2: tokens del sistema de diseño (redisenio §1)
 **Alcance:** SOLO tokens, cambio 100% aditivo (ejecutor Haiku 4.5; orquestador revisó/verificó/commiteó).

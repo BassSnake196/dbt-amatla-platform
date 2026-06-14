@@ -16,6 +16,8 @@ export default async function PlataformaLayout({ children }: { children: React.R
     .join('')
 
   return (
-    <AppShell usuario={{ nombre, iniciales, rol: session.user.role }}>{children}</AppShell>
+    <AppShell usuario={{ nombre, iniciales, rol: session.user.role, imagen: session.user.image ?? null }}>
+      {children}
+    </AppShell>
   )
 }

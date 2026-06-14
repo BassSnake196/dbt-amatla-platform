@@ -8,19 +8,27 @@ export interface UsuarioShell {
   nombre: string
   iniciales: string
   rol: string
+  imagen: string | null
 }
 
-// Shell de la plataforma: sidebar colapsable en móvil (< 768px) + header con progreso.
+// Shell de la plataforma: sidebar colapsable en móvil (< 768px) + header.
 // Es client component solo por el estado del menú móvil; las páginas siguen siendo Server Components.
 export function AppShell({ usuario, children }: { usuario: UsuarioShell; children: ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
     <div className="flex min-h-dvh">
-      <Sidebar open={sidebarOpen} rol={usuario.rol} onClose={() => setSidebarOpen(false)} />
+      <Sidebar
+        open={sidebarOpen}
+        imagen={usuario.imagen}
+        nombre={usuario.nombre}
+        iniciales={usuario.iniciales}
+        rol={usuario.rol}
+        onClose={() => setSidebarOpen(false)}
+      />
       <div className="flex min-w-0 flex-1 flex-col">
         <Header usuario={usuario} onOpenSidebar={() => setSidebarOpen(true)} />
-        <main className="flex-1 px-4 py-6 md:px-8">{children}</main>
+        <main className="flex-1 bg-fondo px-4 py-6 md:px-8">{children}</main>
       </div>
     </div>
   )
