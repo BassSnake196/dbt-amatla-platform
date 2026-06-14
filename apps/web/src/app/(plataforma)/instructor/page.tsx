@@ -6,10 +6,17 @@ import { apiServer } from '@/lib/api-server'
 export const metadata = { title: 'Panel de instructor — DBT.Amatla' }
 
 const ETIQUETA_STATUS = {
-  DRAFT: { texto: 'Borrador', clases: 'bg-neutral-100 text-neutral-900/70' },
-  PUBLISHED: { texto: 'Publicado', clases: 'bg-brand-secondary/10 text-brand-secondary' },
-  ARCHIVED: { texto: 'Archivado', clases: 'bg-neutral-900/5 text-neutral-900/50' },
+  DRAFT: { texto: 'Borrador', clases: 'bg-neutral-100 text-texto-suave' },
+  PUBLISHED: { texto: 'Publicado', clases: 'bg-teal-suave text-teal' },
+  ARCHIVED: { texto: 'Archivado', clases: 'bg-neutral-900/5 text-texto-suave' },
 } as const
+
+const formatoFecha = new Intl.DateTimeFormat('es-MX', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+  timeZone: 'America/Mexico_City',
+})
 
 function formatearDuracion(segundos: number): string {
   if (segundos === 0) return 'Sin contenido'
@@ -18,12 +25,18 @@ function formatearDuracion(segundos: number): string {
   return horas > 0 ? `${horas} h ${minutos} min` : `${minutos} min`
 }
 
-const formatoFecha = new Intl.DateTimeFormat('es-MX', {
-  day: 'numeric',
-  month: 'short',
-  year: 'numeric',
-  timeZone: 'America/Mexico_City',
-})
+const PALETAS = [
+  { fondo: 'linear-gradient(135deg, #2E7D6B 0%, #1A3A35 85%)', psi: 'rgba(245, 166, 35, 0.35)' },
+  { fondo: 'linear-gradient(135deg, #F5A623 0%, #DC8A10 90%)', psi: 'rgba(26, 58, 53, 0.30)' },
+  { fondo: 'linear-gradient(135deg, #F9EDD5 0%, #EDD9B4 90%)', psi: 'rgba(46, 125, 107, 0.35)' },
+  { fondo: 'linear-gradient(135deg, #1A3A35 0%, #2E7D6B 90%)', psi: 'rgba(249, 237, 213, 0.30)' },
+] as const
+
+function artePara(categoria: string) {
+  let hash = 0
+  for (const c of categoria) hash = (hash * 31 + c.charCodeAt(0)) | 0
+  return PALETAS[Math.abs(hash) % PALETAS.length]!
+}
 
 export default async function InstructorPage() {
   // Doble guardia: además del layout con sesión, esta vista exige rol de instructor
@@ -36,19 +49,17 @@ export default async function InstructorPage() {
   const totalEstudiantes = cursos.reduce((suma, c) => suma + c.estudiantes, 0)
 
   return (
-    <div className="mx-auto max-w-5xl space-y-8">
+    <div className="mx-auto max-w-6xl space-y-8">
       <section className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h2 className="font-serif text-2xl font-semibold text-brand-dark md:text-3xl">
-            Panel de instructor
-          </h2>
-          <p className="mt-1 text-sm text-neutral-900/60">
+          <h1 className="text-display text-texto">Panel de instructor</h1>
+          <p className="mt-1 text-body text-texto-suave">
             Tus cursos, su estado y el avance de tus estudiantes.
           </p>
         </div>
         <Link
           href="/instructor/cursos/nuevo"
-          className="inline-flex items-center gap-2 rounded-full bg-brand-primary px-5 py-2.5 text-sm font-semibold text-brand-dark transition-opacity hover:opacity-90"
+          className="inline-flex items-center gap-2 rounded-lg bg-naranja px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
         >
           <Plus size={16} aria-hidden="true" />
           Nuevo curso
@@ -58,97 +69,119 @@ export default async function InstructorPage() {
       {/* Métricas generales */}
       <section className="grid gap-4 sm:grid-cols-3" aria-label="Resumen">
         {[
-          { etiqueta: 'Cursos', valor: cursos.length, Icono: BookOpen },
-          { etiqueta: 'Publicados', valor: publicados, Icono: Layers },
-          { etiqueta: 'Estudiantes activos', valor: totalEstudiantes, Icono: Users },
-        ].map(({ etiqueta, valor, Icono }) => (
-          <div key={etiqueta} className="flex items-center gap-4 rounded-card bg-white p-5 shadow-card">
-            <div className="rounded-lg bg-brand-surface p-2.5">
-              <Icono className="text-brand-secondary" size={20} aria-hidden="true" />
+          { etiqueta: 'Cursos', valor: cursos.length, Icono: BookOpen, clasesIcono: 'bg-teal-suave text-teal' },
+          { etiqueta: 'Publicados', valor: publicados, Icono: Layers, clasesIcono: 'bg-naranja-suave text-naranja' },
+          { etiqueta: 'Estudiantes', valor: totalEstudiantes, Icono: Users, clasesIcono: 'bg-teal-suave text-teal' },
+        ].map(({ etiqueta, valor, Icono, clasesIcono }) => (
+          <div
+            key={etiqueta}
+            className="flex items-center gap-4 rounded-card border border-borde bg-white p-5"
+          >
+            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] ${clasesIcono}`}>
+              <Icono size={20} aria-hidden="true" />
             </div>
             <div>
-              <p className="font-serif text-2xl font-semibold text-brand-dark">{valor}</p>
-              <p className="text-xs text-neutral-900/60">{etiqueta}</p>
+              <p className="text-3xl font-semibold text-texto">{valor}</p>
+              <p className="text-caption text-texto-suave">{etiqueta}</p>
             </div>
           </div>
         ))}
       </section>
 
       {/* Lista de cursos */}
-      <section aria-label="Mis cursos">
+      <section aria-labelledby="mis-cursos">
+        <h2 id="mis-cursos" className="mb-5 text-heading text-texto">
+          Mis cursos
+        </h2>
+
         {cursos.length === 0 ? (
-          <div className="rounded-card bg-brand-surface p-10 text-center shadow-card">
-            <p className="font-serif text-xl text-brand-dark">Aún no tienes cursos</p>
-            <p className="mx-auto mt-2 max-w-sm text-sm text-brand-dark/70">
+          <div className="rounded-card border border-borde bg-white p-10 text-center">
+            <p className="text-heading text-texto">Aún no tienes cursos</p>
+            <p className="mx-auto mt-2 max-w-sm text-body text-texto-suave">
               Crea tu primer curso y empieza a estructurar las secciones y lecciones para tus
               estudiantes.
             </p>
           </div>
         ) : (
-          <ul className="space-y-3">
+          <div className="grid gap-5 md:grid-cols-2">
             {cursos.map((curso) => {
               const status = ETIQUETA_STATUS[curso.status]
+              const arte = artePara(curso.categoria)
               return (
-                <li
+                <article
                   key={curso.id}
-                  className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-card bg-white p-5 shadow-card transition-shadow hover:shadow-md"
+                  className="group flex flex-col overflow-hidden rounded-card border border-borde bg-white transition-all hover:-translate-y-0.5 hover:shadow-lg"
                 >
-                  <div className="min-w-0 flex-1 basis-64">
-                    <div className="flex items-center gap-3">
-                      <Link
-                        href={`/instructor/cursos/${curso.id}`}
-                        className="truncate font-serif text-base font-semibold text-brand-dark hover:text-brand-secondary"
-                      >
-                        {curso.titulo}
-                      </Link>
-                      <span
-                        className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${status.clases}`}
-                      >
+                  <div
+                    className="relative flex h-28 items-end overflow-hidden p-4"
+                    style={{ background: arte.fondo }}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute -right-2 -top-9 select-none font-serif text-[8rem] leading-none"
+                      style={{ color: arte.psi }}
+                    >
+                      Ψ
+                    </span>
+                    <span className="relative rounded-full bg-black/25 px-3 py-1 text-[11px] font-medium text-white backdrop-blur-sm">
+                      {curso.categoria}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-1 flex-col p-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${status.clases}`}>
                         {status.texto}
                       </span>
                       <span
-                        className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
-                          curso.esPublico
-                            ? 'bg-brand-secondary/10 text-brand-secondary'
-                            : 'bg-neutral-100 text-neutral-900/60'
+                        className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                          curso.esPublico ? 'bg-teal-suave text-teal' : 'bg-neutral-100 text-texto-suave'
                         }`}
                       >
                         {curso.esPublico ? 'Público' : 'Privado'}
                       </span>
                     </div>
-                    <p className="mt-1 text-xs text-neutral-900/50">
-                      {curso.categoria} · Actualizado el {formatoFecha.format(curso.actualizadoEl)}
+
+                    <h3 className="mt-2">
+                      <Link
+                        href={`/instructor/cursos/${curso.id}`}
+                        className="font-serif text-base font-semibold text-texto hover:text-teal"
+                      >
+                        {curso.titulo}
+                      </Link>
+                    </h3>
+
+                    <p className="mt-1 text-caption text-texto-suave">
+                      Actualizado el {formatoFecha.format(curso.actualizadoEl)}
                     </p>
+
+                    <div className="mt-auto flex flex-wrap items-center gap-4 pt-3 text-caption text-texto-suave">
+                      <span className="inline-flex items-center gap-1.5">
+                        <Layers size={14} aria-hidden="true" />
+                        {curso.secciones} secc · {curso.lecciones} lecc
+                      </span>
+                      <span className="inline-flex items-center gap-1.5">
+                        <Clock3 size={14} aria-hidden="true" />
+                        {formatearDuracion(curso.duracionSegundos)}
+                      </span>
+                      <span className="inline-flex items-center gap-1.5">
+                        <Users size={14} aria-hidden="true" />
+                        {curso.estudiantes} estudiantes
+                      </span>
+                    </div>
+
+                    <Link
+                      href={`/instructor/cursos/${curso.id}/editar`}
+                      className="mt-3 inline-flex w-fit items-center gap-1.5 rounded-full border border-borde px-3 py-1.5 text-xs font-semibold text-texto transition-colors hover:bg-crema-hover"
+                    >
+                      <Pencil size={13} aria-hidden="true" />
+                      Editar
+                    </Link>
                   </div>
-
-                  <Link
-                    href={`/instructor/cursos/${curso.id}/editar`}
-                    className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-neutral-100 px-3.5 py-1.5 text-xs font-semibold text-brand-dark transition-colors hover:border-brand-secondary hover:text-brand-secondary"
-                  >
-                    <Pencil size={13} aria-hidden="true" />
-                    Editar
-                  </Link>
-
-                  <dl className="flex shrink-0 items-center gap-5 text-xs text-neutral-900/70">
-                    <div className="flex items-center gap-1.5">
-                      <Layers size={14} aria-hidden="true" />
-                      <dd>
-                        {curso.secciones} secciones · {curso.lecciones} lecciones
-                      </dd>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Clock3 size={14} aria-hidden="true" />
-                      <dd>{formatearDuracion(curso.duracionSegundos)}</dd>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Users size={14} aria-hidden="true" />
-                      <dd>{curso.estudiantes} estudiantes</dd>
-                    </div>
-                  </dl>
-                </li>
+                </article>
               )
             })}
-          </ul>
+          </div>
         )}
       </section>
     </div>

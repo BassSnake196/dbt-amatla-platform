@@ -1,5 +1,5 @@
 # 📌 Estado del Proyecto: Plataforma E-Learning
-- **Última actualización:** 2026-06-14 (sesión 10 — REDISEÑO) — Arranque de la sesión de rediseño visual. **Bloque 5 cerrado: Explorar in-shell (`/explorar`) + rediseño del catálogo público `/general` (hero de marca) + búsqueda funcional del catálogo público (redisenio §13,§14 + decisión §3.2).** Bloque 4: home (hero + Descubrir) + login solo-Google. Bloque 3: sidebar + topbar + avatar real + 3 stubs. Bloque 2: tokens (§1). Bloque 1: FIX §15. Decisiones de flujo tomadas con el usuario: Inicio = mis cursos + descubrir público (sin muro vacío); Explorar dentro del shell; quitar "Mis cursos" del sidebar; stubs "Próximamente" para Calendario/Notificaciones/Configuración. Antes (sesión 9): catálogo público "General" + visibilidad (público/privado), migración `add_course_public`, 237 tests.
+- **Última actualización:** 2026-06-14 (sesión 10 — REDISEÑO) — Arranque de la sesión de rediseño visual. **Bloque 6 cerrado: rediseño del dashboard del instructor (redisenio §5).** Bloque 5: Explorar in-shell + rediseño `/general` + búsqueda pública. Bloque 4: home (hero + Descubrir) + login solo-Google. Bloque 3: sidebar + topbar + avatar real + 3 stubs. Bloque 2: tokens (§1). Bloque 1: FIX §15. Decisiones de flujo tomadas con el usuario: Inicio = mis cursos + descubrir público (sin muro vacío); Explorar dentro del shell; quitar "Mis cursos" del sidebar; stubs "Próximamente" para Calendario/Notificaciones/Configuración. Antes (sesión 9): catálogo público "General" + visibilidad (público/privado), migración `add_course_public`, 237 tests.
 - **Fase Actual:** Fase 4 ✅ (features del MVP completas). **Pendiente para usar el MVP de punta a punta en local: AUTH REAL (Google login / Magic Link) — hoy solo se entra con `/api/dev-login`.** Ver "Pendientes del prompt maestro" más abajo. Siguiente: cerrar auth real → Fase 5 (calidad/CI).
 - **Objetivo del Sprint:** Cerrar el MVP: asignación, progreso secuencial, quiz, editor TEXT, panel admin, progreso por estudiante (certificado/email/granular/móvil DIFERIDOS)
 
@@ -71,6 +71,29 @@
 - [x] Preview de lección + publicar/archivar con validación
 
 ## 🧠 Memoria de Decisiones (ADRs)
+
+### ADR — 2026-06-14 (sesión 10, rediseño) — Bloque 6: rediseño del dashboard del instructor (redisenio §5)
+**Alcance:** frontend, restyle visual de UN archivo (`(plataforma)/instructor/page.tsx`, server component;
+ejecutor Sonnet 4.6; orquestador planificó/revisó/verificó/commiteó). Sin cambios de lógica, datos, schema
+ni routers → no se recompiló la API; reusa `cursos.misCursos()` tal cual. **Datos reales disponibles**
+(verificado en el output de `misCursos`): `{ id, titulo, categoria, status, estudiantes, secciones,
+lecciones, duracionSegundos, actualizadoEl, esPublico }` — **sin thumbnail**. **Header (§5 B1):** `h1`
+`text-display` + subtítulo + CTA "Nuevo curso" naranja. **Métricas (§5 B2):** 3 cards REALES (Cursos,
+Publicados, Estudiantes) con contenedor de icono (`bg-teal-suave`/`bg-naranja-suave` 40px), número grande
+y caption. **Se OMITE la "tasa media de finalización"** del mockup: no hay procedure que la dé sin N
+consultas (regla de oro → no se inventa ni se pone "—", se omite y se dejan solo métricas reales).
+**"Mis cursos" (§5 B3):** se pasó de la lista vertical a un **grid 2 columnas** de cards `<article>` con
+cabecera de **arte generativo** (gradiente por categoría + Ψ, sin thumbnail en los datos; altura FIJA h-28
+para evitar layout shift — guardrail de ui-ux-pro-max), badges de status (PUBLISHED `bg-teal-suave text-teal`
+/ DRAFT-ARCHIVED gris) + Público/Privado, título `h3` (link al curso), "Actualizado el {fecha}"
+(`Intl.DateTimeFormat es-MX`), pie con secciones·lecciones · duración · estudiantes, y "Editar" (lápiz →
+`/editar`); hover sombra + translate. Empty-state restyleado. **Jerarquía de headings** secuencial h1→h2→h3,
+iconos decorativos `aria-hidden`. **Arte generativo** inlineado en la página (mismo set de 4 gradientes que
+las cards del estudiante) — duplicación consciente para no refactorizar componentes del estudiante a mitad
+del rediseño; posible extracción futura a `lib/arte-categoria.ts`. **Verificación:** `type-check -w
+@amatla/web` en verde + smoke HTTP con dev-login instructora: `/instructor` → 200 con "Panel de instructor"
+(h1), las métricas, "Mis cursos" y los enlaces "Editar". 237 tests siguen en verde (solo UI). Commit
+`style:`.
 
 ### ADR — 2026-06-14 (sesión 10, rediseño) — Bloque 5: Explorar in-shell + rediseño /general + búsqueda pública (redisenio §13,§14 + decisión §3.2)
 **Alcance:** frontend (ejecutor Sonnet 4.6; orquestador planificó/revisó/verificó/commiteó). Sin cambios de
